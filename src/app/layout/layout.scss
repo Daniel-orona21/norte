@@ -247,7 +247,7 @@
   top: 0;
   left: 0;
   width: 100%;
-  background-color: red;
+  opacity: 0;
   display: flex;
   padding: 1rem 2rem;
   align-items: center;
@@ -273,27 +273,28 @@
   width: 100%;
   display: flex;
   justify-content: center;
-  height: 200vh;
-  background-color: #fff2ea;
+  height: 140vh;
   // background-color: #fff2ea;
+  background-color: white;
 }
 
 .hero__stage {
   position: sticky;
   top: 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: center;
-  gap: 15rem;
-  width: 80%;
-  // background-color: blue;
+  display: block;
+  width: 100%;
   height: 100vh;
-  padding: 0rem;
+  padding: 0;
   overflow: hidden;
 }
 
 .logo-slot {
-  width: 120%;
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(72vw, 720px);
 }
 
 .logo {
@@ -302,7 +303,6 @@
   flex-direction: column;
   align-items: center;
   gap: clamp(0.75rem, 1.5vw, 1.5rem);
-  will-change: transform;
 
   path {
     stroke-linecap: round;
@@ -363,6 +363,13 @@
   visibility: hidden;
   transform-origin: center center;
   will-change: opacity, transform;
+  // Halo blanco moderado: separa el texto del mapa sin taparlo
+  filter:
+  drop-shadow(0 0 3px #fff)
+  drop-shadow(0 0 8px #fff)
+  drop-shadow(0 0 18px #fff)
+  drop-shadow(0 0 35px #fff)
+  drop-shadow(0 0 60px rgba(255, 255, 255, 1));
 }
 
 .logo--settled .logo__tagline {
@@ -370,35 +377,76 @@
   visibility: visible;
 }
 
-.presentacion {
-  width: 100%;
-  // background-color: yellow;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 0 !important;
-  will-change: transform, opacity;
-  visibility: hidden;
-  max-width: 800px;
+.durango-copy {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  right: clamp(1.25rem, 6vw, 5.5rem);
+  left: auto;
+  transform: translateY(-50%);
+  width: min(42vw, 460px);
+  pointer-events: none;
+  color: #111;
+}
 
-    h1 {
-      font-size: 4.5rem;
-      // background-color: blue;
-      margin-left: -4px;
-      line-height: .5;
-    }
+.durango-copy__split {
+  margin: 0;
+  opacity: 1;
+  text-align: left;
+  font-weight: 500;
+  font-size: clamp(1.05rem, 2.1vw, 1.55rem);
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  will-change: transform;
+}
 
-    h2 {
-      font-size: 1.5rem;
-      opacity: 0.6;
-      // background-color: green;
-    }
-    h3 {
-      font-size: 1.75rem;
-      margin-top: .5rem;
-      font-weight: 400;
-      // background-color: red;
-    }
+.durango-copy__name {
+  display: inline-block;
+  font-weight: 800;
+  font-size: clamp(2.4rem, 5.5vw, 4.25rem);
+  letter-spacing: 0.04em;
+  line-height: 0.95;
+}
+
+.durango-copy__split,
+.durango-copy__split * {
+  will-change: transform;
+}
+
+.mexico-map {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: transparent;
+}
+
+.mexico-map__canvas {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  // Limita por ancho y alto para no romper aspect-ratio ni descentrar
+  width: min(96vw, 1280px, calc(92vh * 1200 / 780));
+  height: auto;
+  aspect-ratio: 1200 / 780;
+
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+}
+
+// innerHTML SVG paths don't receive emulated encapsulation attributes
+:host ::ng-deep .mexico-map__canvas path {
+  fill: transparent;
+  stroke: rgba(17, 17, 17, 0.28);
+  stroke-width: 1.85;
+  stroke-linejoin: round;
+  stroke-linecap: butt;
+  opacity: 0;
 }
 
 .scroll-hint {

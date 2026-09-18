@@ -104,11 +104,17 @@
       </div>
     </div>
 
-    <div class="presentacion" #presentacion>
-      <h1>NORTE</h1>
-      <h2>Software construido para lo que necesitas.</h2>
-      <h3>Agencia especializada en convertir ideas en soluciones digitales modernas, funcionales y diseñadas para generar una mejor experiencia.</h3>
+    <div class="mexico-map" #mexicoMap aria-hidden="true">
+      <div class="mexico-map__canvas" #mexicoMapCanvas></div>
     </div>
+
+    <aside class="durango-copy" #durangoCopy aria-hidden="true">
+      <h2 class="durango-copy__split split" #durangoCopyText>
+        Desde<br />
+        <span class="durango-copy__name">DURANGO</span><br />
+        Brindando soluciones
+      </h2>
+    </aside>
 
     <button
       #scrollHint

@@ -11,8 +11,9 @@ import {
 import { interpolate } from 'flubber';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { SplitText } from 'gsap/SplitText';
 
-gsap.registerPlugin(ScrollTrigger);
+gsap.registerPlugin(ScrollTrigger, SplitText);
 
 /** Exact original N (stem + body) — never rewrite this for display. */
 const PATH_N_STEM = 'M195.043 17.7835V246.799';
@@ -49,7 +50,8 @@ export class Layout {
   @ViewChild('hero', { static: true }) hero!: ElementRef<HTMLElement>;
   @ViewChild('stage', { static: true }) stage!: ElementRef<HTMLElement>;
   @ViewChild('logo', { static: true }) logo!: ElementRef<HTMLElement>;
-  @ViewChild('presentacion', { static: true }) presentacion!: ElementRef<HTMLElement>;
+  @ViewChild('mexicoMap', { static: true }) mexicoMap!: ElementRef<HTMLElement>;
+  @ViewChild('mexicoMapCanvas', { static: true }) mexicoMapCanvas!: ElementRef<HTMLElement>;
   @ViewChild('morphStem') morphStem?: ElementRef<SVGPathElement>;
   @ViewChild('morphBody') morphBody?: ElementRef<SVGPathElement>;
   @ViewChild('orteRest') orteRest?: ElementRef<HTMLElement>;
@@ -58,6 +60,8 @@ export class Layout {
   @ViewChild('letterN') letterN?: ElementRef<HTMLElement>;
   @ViewChild('tagline') tagline?: ElementRef<SVGElement>;
   @ViewChild('scrollHint') scrollHint?: ElementRef<HTMLElement>;
+  @ViewChild('durangoCopy', { static: true }) durangoCopy!: ElementRef<HTMLElement>;
+  @ViewChild('durangoCopyText', { static: true }) durangoCopyText!: ElementRef<HTMLElement>;
 
   /** Start on gray A when intro plays; otherwise final N. */
   morphStemD = PLAY_WELCOME_INTRO ? PATH_STEM_HIDDEN : PATH_N_STEM;
@@ -84,10 +88,14 @@ export class Layout {
   private ctx?: gsap.Context;
   private morphTween?: gsap.core.Tween | gsap.core.Timeline;
   private scrollHintTween?: gsap.core.Tween | gsap.core.Timeline;
+  private splitTexts: SplitText[] = [];
   private setupQueued = false;
   private boundHero: HTMLElement | null = null;
   private boundLogo: HTMLElement | null = null;
-  private boundPresentacion: HTMLElement | null = null;
+  private boundMexicoMap: HTMLElement | null = null;
+  private mexicoPaths: SVGPathElement[] = [];
+  private mexicoSvgReady = false;
+  private mexicoSvgLoading?: Promise<void>;
   private scrollLocked = false;
   private scrollHintVisible = false;
   /** Once true, HMR/setup always snaps to the finished welcome logo. */
@@ -114,20 +122,22 @@ export class Layout {
   constructor() {
     afterNextRender(() => {
       this.bindHotReload();
-      this.setup();
+      // Position logo immediately, start intro, then attach Mexico scroll when SVG is ready.
+      this.setup({ requireMap: false });
       this.runIntro();
+      void this.ensureMexicoSvg().then(() => this.setup({ requireMap: true }));
     });
 
     afterEveryRender(() => {
       const hero = this.hero?.nativeElement;
       const logo = this.logo?.nativeElement;
-      const presentacion = this.presentacion?.nativeElement;
-      if (!hero || !logo || !presentacion) return;
+      const mexicoMap = this.mexicoMap?.nativeElement;
+      if (!hero || !logo || !mexicoMap) return;
 
       if (
         hero !== this.boundHero ||
         logo !== this.boundLogo ||
-        presentacion !== this.boundPresentacion
+        mexicoMap !== this.boundMexicoMap
       ) {
         this.queueSetup();
       }
@@ -137,7 +147,7 @@ export class Layout {
       this.morphTween?.kill();
       this.scrollHintTween?.kill();
       this.unlockScroll();
-      this.teardown();
+      this.teardown({ killIntro: true });
     });
   }
 
@@ -448,18 +458,25 @@ export class Layout {
     this.setupQueued = true;
     queueMicrotask(() => {
       this.setupQueued = false;
-      this.setup();
-      // After HMR, always settle welcome visuals if intro is off or already finished
-      if (!PLAY_WELCOME_INTRO || this.introDone) {
-        this.applyFinalIntroState();
-      }
+      void this.ensureMexicoSvg().then(() => {
+        this.setup({ requireMap: true });
+        // After HMR, always settle welcome visuals if intro is off or already finished
+        if (!PLAY_WELCOME_INTRO || this.introDone) {
+          this.applyFinalIntroState();
+        }
+      });
     });
   }
 
-  private teardown(): void {
-    this.morphTween?.kill();
-    this.morphTween = undefined;
-    this.morphing = false;
+  private teardown(opts: { killIntro?: boolean } = {}): void {
+    const killIntro = opts.killIntro === true || !this.morphing;
+
+    if (killIntro) {
+      this.morphTween?.kill();
+      this.morphTween = undefined;
+      this.morphing = false;
+    }
+
     this.scrollHintTween?.kill();
     this.scrollHintTween = undefined;
     this.scrollHintVisible = false;
@@ -467,20 +484,25 @@ export class Layout {
     this.ctx?.revert();
     this.ctx = undefined;
 
+    this.splitTexts.forEach((split) => split.revert());
+    this.splitTexts = [];
+
     const logo = this.logo?.nativeElement;
-    const presentacion = this.presentacion?.nativeElement;
     const hero = this.hero?.nativeElement;
     const wordmark = this.wordmark?.nativeElement;
     const orteEl = this.orteRest?.nativeElement;
     const taglineEl = this.tagline?.nativeElement;
     const hint = this.scrollHint?.nativeElement;
+    const copy = this.durangoCopy?.nativeElement;
 
-    if (logo) gsap.killTweensOf(logo);
-    if (presentacion) gsap.killTweensOf(presentacion);
-    if (wordmark) gsap.killTweensOf(wordmark);
-    if (orteEl) gsap.killTweensOf(orteEl);
-    if (taglineEl) gsap.killTweensOf(taglineEl);
+    if (this.mexicoPaths.length) gsap.killTweensOf(this.mexicoPaths);
+    if (killIntro) {
+      if (wordmark) gsap.killTweensOf(wordmark);
+      if (orteEl) gsap.killTweensOf(orteEl);
+      if (taglineEl) gsap.killTweensOf(taglineEl);
+    }
     if (hint) gsap.killTweensOf(hint);
+    if (copy) gsap.killTweensOf(copy);
 
     ScrollTrigger.getAll().forEach((st) => {
       if (st.trigger === hero || st.trigger === this.boundHero) {
@@ -488,65 +510,131 @@ export class Layout {
       }
     });
 
-    if (logo) gsap.set(logo, { clearProps: 'transform' });
-    if (presentacion) gsap.set(presentacion, { clearProps: 'all' });
-    // Keep ORTE / tagline / wordmark inline styles — reapplied in applyFinalIntroState
+    // Keep ORTE / tagline / wordmark / logo position — logo no longer scrolls
+    if (logo) gsap.set(logo, { clearProps: 'transform,opacity,visibility' });
+    if (copy) {
+      gsap.set(copy, { clearProps: 'opacity,visibility' });
+      copy.setAttribute('aria-hidden', 'true');
+    }
 
     this.boundHero = null;
     this.boundLogo = null;
-    this.boundPresentacion = null;
+    this.boundMexicoMap = null;
   }
 
-  /** Final layout = left column. Start = centered on stage, scaled to ~90% width. */
-  private measureLogoStart(stage: HTMLElement, logo: HTMLElement): { x: number; scale: number } {
-    const slot = logo.parentElement!;
-    const stageRect = stage.getBoundingClientRect();
-    const slotRect = slot.getBoundingClientRect();
-    const logoWidth = logo.offsetWidth || 1;
-    const stageCenter = stageRect.left + stageRect.width / 2;
-    const logoCenter = slotRect.left + slotRect.width / 2;
+  private async ensureMexicoSvg(): Promise<void> {
+    const host = this.mexicoMapCanvas?.nativeElement;
+    if (
+      this.mexicoSvgReady &&
+      this.mexicoPaths.length === 32 &&
+      host?.querySelector('#MX-aguascalientes') &&
+      !host.querySelector('path[pathLength]')
+    ) {
+      return;
+    }
+    if (this.mexicoSvgLoading) return this.mexicoSvgLoading;
 
-    return {
-      x: stageCenter - logoCenter,
-      scale: (stageRect.width * 0.9) / logoWidth,
-    };
+    this.mexicoSvgLoading = (async () => {
+      if (!host) return;
+
+      try {
+        host.style.visibility = 'hidden';
+        const res = await fetch('/mexico-states.svg?v=draw1');
+        if (!res.ok) throw new Error(`Mexico SVG failed: ${res.status}`);
+        host.innerHTML = await res.text();
+
+        await new Promise<void>((r) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => r())),
+        );
+
+        const paths = Array.from(host.querySelectorAll<SVGPathElement>('.mexico-states path'));
+        this.mexicoPaths = paths;
+        this.mexicoSvgReady = paths.length > 0;
+        this.prepareMexicoPaths(paths);
+        host.style.visibility = 'visible';
+      } catch (err) {
+        console.error(err);
+        this.mexicoSvgReady = false;
+        this.mexicoPaths = [];
+        host.style.visibility = 'visible';
+      }
+    })().finally(() => {
+      this.mexicoSvgLoading = undefined;
+    });
+
+    return this.mexicoSvgLoading;
   }
 
-  private setup(): void {
+  /**
+   * Prepare stroke-draw: real path length in px (no pathLength attr).
+   * Fully invisible until scroll starts tracing the contour.
+   */
+  private prepareMexicoPaths(paths: SVGPathElement[]): void {
+    paths.forEach((p) => {
+      p.removeAttribute('pathLength');
+      p.removeAttribute('stroke-dasharray');
+      p.removeAttribute('stroke-dashoffset');
+
+      p.setAttribute('fill', 'transparent');
+      p.setAttribute('stroke', 'rgba(17, 17, 17, 0.28)');
+      p.setAttribute('stroke-width', '1.85');
+      p.setAttribute('stroke-linejoin', 'round');
+      // butt avoids the round-cap "dot" at dash start
+      p.setAttribute('stroke-linecap', 'butt');
+      p.style.fill = 'transparent';
+      p.style.stroke = 'rgba(17, 17, 17, 0.28)';
+      p.style.strokeWidth = '1.85';
+      p.style.strokeLinecap = 'butt';
+
+      const len = Math.max(p.getTotalLength(), 1);
+      p.dataset['len'] = String(len);
+      // Extra offset past length so no pixel of the stroke peeks through
+      const hide = len + 4;
+
+      gsap.set(p, {
+        strokeDasharray: len,
+        strokeDashoffset: hide,
+        autoAlpha: 0,
+      });
+    });
+  }
+
+  private setup(opts: { requireMap?: boolean } = {}): void {
+    const requireMap = opts.requireMap !== false;
     const hero = this.hero?.nativeElement;
-    const stage = this.stage?.nativeElement;
     const logo = this.logo?.nativeElement;
-    const presentacion = this.presentacion?.nativeElement;
-    if (!hero || !stage || !logo || !presentacion) return;
+    const mexicoMap = this.mexicoMap?.nativeElement;
+    const copyRoot = this.durangoCopy?.nativeElement;
+    const copyText = this.durangoCopyText?.nativeElement;
+    const paths = this.mexicoPaths;
+    if (!hero || !logo || !mexicoMap) return;
+    if (requireMap && !paths.length) return;
 
     this.teardown();
 
     this.boundHero = hero;
     this.boundLogo = logo;
-    this.boundPresentacion = presentacion;
+    this.boundMexicoMap = mexicoMap;
+
+    gsap.set(logo, { clearProps: 'transform', autoAlpha: 1 });
+    if (copyRoot) {
+      gsap.set(copyRoot, { autoAlpha: 0 });
+      copyRoot.setAttribute('aria-hidden', 'true');
+    }
+
+    if (!paths.length) return;
 
     const scrollY = window.scrollY;
-    const start = this.measureLogoStart(stage, logo);
+    this.prepareMexicoPaths(paths);
 
     this.ctx = gsap.context(() => {
-      gsap.set(logo, {
-        x: start.x,
-        scale: start.scale,
-        transformOrigin: 'center center',
-      });
-
-      gsap.set(presentacion, {
-        autoAlpha: 0,
-        x: 0,
-      });
-
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: hero,
           start: 'top top',
           end: 'bottom bottom',
           markers: false,
-          scrub: 0.6,
+          scrub: true,
           invalidateOnRefresh: true,
           onUpdate: (self) => {
             if (self.progress > 0.02) {
@@ -554,39 +642,94 @@ export class Layout {
             } else if (this.introDone) {
               this.showScrollHint();
             }
+
+            if (copyRoot) {
+              copyRoot.setAttribute(
+                'aria-hidden',
+                self.progress > 0.82 ? 'false' : 'true',
+              );
+            }
           },
         },
       });
 
-      tl.fromTo(
-        logo,
-        {
-          x: () => this.measureLogoStart(stage, logo).x,
-          scale: () => this.measureLogoStart(stage, logo).scale,
-        },
-        {
-          x: 0,
-          scale: 1,
-          ease: 'none',
-          duration: 1,
-          immediateRender: false,
-        },
-        0,
-      );
+      const drawDuration = 5;
+      const staggerAmount = 2.2;
+      const order = gsap.utils.shuffle(paths.slice());
+      const durango = paths.find((p) => p.id === 'MX-durango');
+      const others = paths.filter((p) => p.id !== 'MX-durango');
+
+      order.forEach((path, i) => {
+        const len = Number(path.dataset['len'] || path.getTotalLength() || 1);
+        const hide = len + 4;
+        const start = paths.length <= 1 ? 0 : (i / (paths.length - 1)) * staggerAmount;
+
+        gsap.set(path, {
+          strokeDasharray: len,
+          strokeDashoffset: hide,
+          autoAlpha: 0,
+          strokeLinecap: 'butt',
+          fill: 'rgba(44,220,110,0)',
+        });
+
+        // Appear only when this contour starts tracing
+        tl.to(path, { autoAlpha: 1, duration: 0.08, ease: 'none' }, start);
+        tl.to(path, { strokeDashoffset: 0, duration: drawDuration, ease: 'none' }, start);
+      });
+
+      // Finale: fill Durango + fade the rest + swap logo → copy
+      const finaleAt = staggerAmount + drawDuration;
+      if (durango) {
+        tl.to(
+          durango,
+          {
+            fill: '#2CDC6E',
+            stroke: '#2CDC6E',
+            strokeWidth: 0,
+            duration: 0.85,
+            ease: 'none',
+          },
+          finaleAt,
+        );
+      }
+      if (others.length) {
+        tl.to(
+          others,
+          { autoAlpha: 0.28, duration: 0.85, ease: 'none' },
+          finaleAt,
+        );
+      }
 
       tl.to(
-        presentacion,
-        {
-          autoAlpha: 1,
-          x: 0,
-          ease: 'power2.out',
-          duration: 0.35,
-        },
-        0.95,
+        logo,
+        { autoAlpha: 0, y: -28, scale: 0.96, duration: 0.7, ease: 'none' },
+        finaleAt,
       );
+
+      if (copyRoot && copyText) {
+        // SplitText en el mismo scrub del mapa (un ST aparte no alcanzaba el start)
+        const split = SplitText.create(copyText, {
+          type: 'words,lines',
+          mask: 'lines',
+          linesClass: 'line',
+        });
+        this.splitTexts.push(split);
+
+        gsap.set(split.lines, { yPercent: 120 });
+        tl.to(copyRoot, { autoAlpha: 1, duration: 0.15, ease: 'none' }, finaleAt);
+        tl.to(
+          split.lines,
+          { yPercent: 0, stagger: 0.1, duration: 0.85, ease: 'none' },
+          finaleAt + 0.05,
+        );
+      }
     }, hero);
 
     ScrollTrigger.refresh();
+    ScrollTrigger.getAll()
+      .filter((st) => st.trigger === hero)
+      .forEach((st) => st.update());
+
     if (window.scrollY !== scrollY) {
       window.scrollTo(0, scrollY);
     }
