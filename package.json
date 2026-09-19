@@ -30,6 +30,8 @@
     "@angular/router": "^20.3.0",
     "flubber": "^0.4.2",
     "gsap": "^3.15.0",
+    "lucide": "^1.47.0",
+    "motion-components": "^0.6.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"

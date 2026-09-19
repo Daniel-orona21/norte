@@ -1,0 +1,154 @@
+@function pxToRem($pixel) {
+  @return calc($pixel / 16) + rem;
+}
+
+:host {
+  --color-black: hsla(0, 0%, 12%, 100%);
+  --color-white: hsla(0, 0%, 100%, 100%);
+  --color-purple: hsla(278, 100%, 75%, 100%);
+
+  display: block;
+  background-color: white;
+  color: black;
+}
+
+main {
+  margin: 0;
+  position: relative;
+}
+
+.heading {
+  font-size: clamp(3.125rem, 3.464vw + 2.229rem, 5rem);
+  line-height: clamp(4.688rem, 3.349vw + 3.821rem, 6.5rem);
+  text-align: center;
+  opacity: 0.04;
+  font-weight: 300;
+  position: absolute;
+  left: 50%;
+  margin: 0;
+  top: 50%;
+  transform: translate3d(-50%, -50%, -3200px);
+  white-space: nowrap;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.zoom-container {
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+  perspective: 100svh;
+  perspective-origin: 50% 48%;
+  width: 100vw;
+}
+
+.zoom-item {
+  position: absolute;
+  transform-origin: center center;
+  transform-style: preserve-3d;
+  // Tamaño nativo alto: el GPU escala el bitmap del elemento; si es chico, se pixela al acercarse
+  max-width: min(85vw, 920px);
+  max-height: min(85vw, 920px);
+  --icon-o: 1;
+
+  &[data-layer='8'] {
+    z-index: 8;
+  }
+
+  &[data-layer='7'] {
+    z-index: 7;
+  }
+
+  &[data-layer='6'] {
+    z-index: 6;
+  }
+
+  &[data-layer='5'] {
+    z-index: 5;
+  }
+
+  &[data-layer='4'] {
+    z-index: 4;
+  }
+
+  &[data-layer='3'] {
+    z-index: 3;
+  }
+
+  &[data-layer='2'] {
+    z-index: 2;
+  }
+
+  &[data-layer='1'] {
+    z-index: 1;
+  }
+
+  &[data-layer='0'] {
+    z-index: 0;
+  }
+
+  .zoom-icon {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    fill: none;
+    stroke: #000;
+    stroke-width: 1.25;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-opacity: var(--icon-o);
+    shape-rendering: geometricPrecision;
+    transform-origin: center center;
+
+    :is(path, circle, line, polyline, polygon, rect, ellipse) {
+      fill: none;
+      stroke: inherit;
+      stroke-width: inherit;
+      stroke-linecap: inherit;
+      stroke-linejoin: inherit;
+      stroke-opacity: inherit;
+    }
+  }
+}
+
+.section-stick {
+  &.min-h-screen {
+    min-height: 100vh;
+  }
+
+  &.bg-black {
+    background-color: #ffffff;
+  }
+
+  &.flex {
+    display: flex;
+  }
+
+  &.justify-center {
+    justify-content: center;
+  }
+
+  &.items-center {
+    align-items: center;
+  }
+
+  &.text-white {
+    color: #000000;
+  }
+}
+
+.opacity-reveal {
+  &.text-7xl {
+    font-size: 4.5rem;
+    line-height: 1;
+  }
+
+  &.text-center {
+    text-align: center;
+  }
+
+  &.w-3\/5 {
+    width: 60%;
+  }
+}

@@ -1,0 +1,31 @@
+<main>
+  <div class="zoom-container">
+    <h1 class="heading">Qué hacemos?</h1>
+
+    @for (item of zoomIcons; track $index) {
+      <div
+        class="zoom-item"
+        [attr.data-layer]="item.layer"
+        [style.width]="item.width"
+        [style.left]="item.left ?? null"
+        [style.right]="item.right ?? null"
+        [style.top]="item.top ?? null"
+        [style.bottom]="item.bottom ?? null"
+      >
+        <svg
+          class="zoom-icon"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          [style.transform]="item.rotateDeg != null ? 'rotate(' + item.rotateDeg + 'deg)' : null"
+        ></svg>
+      </div>
+    }
+  </div>
+
+  <section class="section-stick min-h-screen bg-black flex justify-center items-center text-white">
+    <p class="opacity-reveal text-7xl text-center w-3/5">
+      If you’re lucky, a Golden Retriever will come into your life, steal your heart, and change
+      everything.
+    </p>
+  </section>
+</main>

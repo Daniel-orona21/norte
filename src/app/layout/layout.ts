@@ -11,6 +11,11 @@ import {
 import { interpolate } from 'flubber';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { Servicios } from './componentes/servicios/servicios';
+import { Proceso } from './componentes/proceso/proceso';
+import { Proyecto } from './componentes/proyecto/proyecto';
+import { Cta } from './componentes/cta/cta';
+import { Footer } from './componentes/footer/footer';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -32,7 +37,7 @@ const VIEW_H = 274;
  * `true`  → play animation and lock scroll until it finishes.
  * `false` → skip animation, show final logo, keep scroll free.
  */
-const PLAY_WELCOME_INTRO = true;
+const PLAY_WELCOME_INTRO = false;
 
 type ViteHot = {
   on: (event: string, cb: (...args: unknown[]) => void) => void;
@@ -41,7 +46,7 @@ type ViteHot = {
 
 @Component({
   selector: 'app-layout',
-  imports: [],
+  imports: [Servicios, Proceso, Proyecto, Cta, Footer],
   templateUrl: './layout.html',
   styleUrl: './layout.scss',
 })
