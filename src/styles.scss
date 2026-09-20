@@ -25,14 +25,16 @@ html {
     background-color: white;
     height: 100%;
     width: 100%;
-    overflow-x: hidden;
+    max-width: 100%;
+    /* clip no crea scroll container → sticky / ScrollTrigger siguen funcionando */
+    overflow-x: clip;
     overflow-y: auto;
 }
 
 body {
     width: 100%;
     max-width: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
     margin: 0;
 }
 
