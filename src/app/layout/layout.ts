@@ -20,17 +20,17 @@ import { Footer } from './componentes/footer/footer';
 gsap.registerPlugin(ScrollTrigger);
 
 /** Exact original N (stem + body) — never rewrite this for display. */
-const PATH_N_STEM = 'M195.043 17.7835V246.799';
+const PATH_N_STEM = 'M149 14.6259V200.626';
 const PATH_N_BODY =
-  'M195.043 246.799L7.5 20.7835V238.553L64.9603 179.079L195.043 246.799Z';
+  'M149 200.626L5 14.6259V200.626L49.1194 145.626L149 200.626Z';
 /** Exact original A. */
 const PATH_A =
-  'M100.447 21.7786L16.447 250.779L100.447 182.4L184.447 250.779L100.447 21.7786Z';
+  'M83.1292 13.8506L11.1292 199.851L83.1292 144.312L155.129 199.851L83.1292 13.8506Z';
 
 /** Stem collapses toward A's bottom-right during N→A. */
-const PATH_STEM_HIDDEN = 'M184.447 250.779L184.447 250.779';
+const PATH_STEM_HIDDEN = 'M155.129 199.851L155.129 199.851';
 
-const VIEW_H = 274;
+const VIEW_H = 215;
 
 /**
  * Dev toggle for the welcome intro (A fill → N morph → ORTE → tagline).
@@ -121,8 +121,7 @@ export class Layout {
     afterNextRender(() => {
       this.bindHotReload();
       this.bindLogoResize();
-      this.setup();
-      this.runIntro();
+      void this.boot();
     });
 
     afterEveryRender(() => {
@@ -215,7 +214,19 @@ export class Layout {
     });
   }
 
-  private runIntro(): void {
+  private async boot(): Promise<void> {
+    await this.whenLogoFontsReady();
+    // Hide ORTE before any layout/setup so it never flashes open
+    const orteEl = this.orteRest?.nativeElement;
+    if (PLAY_WELCOME_INTRO && orteEl && !this.introDone) {
+      gsap.set(orteEl, { clipPath: 'inset(0 100% 0 0)' });
+    }
+    this.setup();
+    await this.runIntro();
+    ScrollTrigger.refresh();
+  }
+
+  private async runIntro(): Promise<void> {
     if (this.morphing) return;
 
     if (!PLAY_WELCOME_INTRO || this.introDone) {
@@ -225,6 +236,21 @@ export class Layout {
     }
 
     this.runFillThenMorph();
+  }
+
+  /** Kodchasan must be loaded before measuring ORTE width (GSAP freezes px otherwise). */
+  private async whenLogoFontsReady(): Promise<void> {
+    const fonts = document.fonts;
+    if (!fonts?.load) return;
+    try {
+      await Promise.all([
+        fonts.load('200 1em Kodchasan'),
+        fonts.load('300 1em Kodchasan'),
+      ]);
+      await fonts.ready;
+    } catch {
+      // Proceed with fallback metrics if the network font fails.
+    }
   }
 
   private lockScroll(): void {
@@ -262,8 +288,6 @@ export class Layout {
     this.morphing = false;
     this.unlockScroll();
 
-    this.syncOrteSizes(orteEl);
-
     stemEl.setAttribute('d', PATH_N_STEM);
     stemEl.setAttribute('opacity', '1');
     bodyEl.setAttribute('d', PATH_N_BODY);
@@ -276,20 +300,18 @@ export class Layout {
     this.fillProgress = 1;
     this.introDone = true;
 
-    gsap.set(wordmarkEl, { x: 0 });
-    gsap.set(taglineEl, { autoAlpha: 1, scale: 0.5 });
+    gsap.set(wordmarkEl, { x: 0, force3D: false });
+    gsap.set(taglineEl, { autoAlpha: 1, force3D: false });
+    this.syncOrteSizes(orteEl);
 
     if (window.scrollY <= 8) this.showScrollHint();
     else this.hideScrollHint(true);
   }
 
-  /** Keep ORTE fluid (%, cqw) — never lock px widths that break on resize. */
+  /** Keep ORTE fully revealed (clip open). Layout width stays max-content. */
   private syncOrteSizes(orteEl = this.orteRest?.nativeElement): void {
     if (!orteEl) return;
-    const orteSvg = orteEl.querySelector('svg') as SVGElement | null;
-    orteSvg?.style.removeProperty('width');
-    orteSvg?.style.removeProperty('height');
-    gsap.set(orteEl, { width: '100%' });
+    gsap.set(orteEl, { clipPath: 'inset(0 0% 0 0)' });
   }
 
   private bindLogoResize(): void {
@@ -338,12 +360,10 @@ export class Layout {
     this.fillProgress = 0;
 
     const centerOffset = this.measureLetterCenterOffset();
-    const orteSvg = orteEl.querySelector('svg') as SVGElement | null;
-    orteSvg?.style.removeProperty('width');
-    orteSvg?.style.removeProperty('height');
-    gsap.set(orteEl, { width: 0 });
-    gsap.set(wordmarkEl, { x: centerOffset });
-    gsap.set(taglineEl, { autoAlpha: 0, scale: 0.5, transformOrigin: 'center center' });
+    gsap.killTweensOf(orteEl);
+    gsap.set(orteEl, { clipPath: 'inset(0 100% 0 0)' });
+    gsap.set(wordmarkEl, { x: centerOffset, force3D: false });
+    gsap.set(taglineEl, { autoAlpha: 0, force3D: false });
 
     const fillState = { p: 0 };
     const morphState = { t: 0 };
@@ -355,10 +375,10 @@ export class Layout {
         bodyEl.setAttribute('d', PATH_N_BODY);
         stemEl.setAttribute('d', PATH_N_STEM);
         stemEl.setAttribute('opacity', '1');
-        this.syncOrteSizes(orteEl);
-        gsap.set(wordmarkEl, { x: 0 });
-        gsap.set(taglineEl, { autoAlpha: 1, scale: 0.5 });
+        gsap.set(wordmarkEl, { x: 0, force3D: false });
+        gsap.set(taglineEl, { autoAlpha: 1, force3D: false });
 
+        // Mark settled BEFORE syncing so CSS never snaps clip closed
         this.ngZone.run(() => {
           this.morphBodyD = PATH_N_BODY;
           this.morphStemD = PATH_N_STEM;
@@ -368,6 +388,7 @@ export class Layout {
           this.morphing = false;
           this.introDone = true;
         });
+        this.syncOrteSizes(orteEl);
 
         this.unlockScroll();
         this.showScrollHint();
@@ -416,11 +437,11 @@ export class Layout {
       '+=0',
     );
 
-    // ORTE reveal + shift N from center into final left alignment
+    // ORTE wipe (clip-path) — no width reflow, letters stay put
     tl.to(
       orteEl,
       {
-        width: '100%',
+        clipPath: 'inset(0 0% 0 0)',
         duration: .6,
         ease: 'power2.inOut',
       },
@@ -432,18 +453,18 @@ export class Layout {
         x: 0,
         duration: .6,
         ease: 'power2.inOut',
+        force3D: false,
       },
       '<',
     );
 
-    tl.fromTo(
+    tl.to(
       taglineEl,
-      { autoAlpha: 0, scale: 0.5 },
       {
         autoAlpha: 1,
-        scale: 0.5,
-        duration: 1,
+        duration: 0.8,
         ease: 'power2.out',
+        force3D: false,
       },
       '+=0.05',
     );
@@ -511,10 +532,10 @@ export class Layout {
     if (logo) gsap.set(logo, { clearProps: 'transform' });
     if (presentacion) gsap.set(presentacion, { clearProps: 'all' });
     if (orteEl) {
-      const orteSvg = orteEl.querySelector('svg') as SVGElement | null;
-      orteSvg?.style.removeProperty('width');
-      orteSvg?.style.removeProperty('height');
-      gsap.set(orteEl, { clearProps: 'width' });
+      gsap.set(orteEl, {
+        clipPath:
+          this.introDone || !PLAY_WELCOME_INTRO ? 'inset(0 0% 0 0)' : 'inset(0 100% 0 0)',
+      });
     }
     // Tagline / wordmark inline styles are reapplied in applyFinalIntroState
 
@@ -523,22 +544,39 @@ export class Layout {
     this.boundPresentacion = null;
   }
 
-  /** Final layout = left column. Start = centered on stage, scaled to ~90% width. */
+  /**
+   * Logo is laid out at hero size. Start = scale 1 centered.
+   * End = scale down into the left column (scaling down stays sharp).
+   */
   private measureLogoStart(stage: HTMLElement, logo: HTMLElement): { x: number; scale: number } {
     const slot = logo.parentElement!;
     const stageRect = stage.getBoundingClientRect();
     const slotRect = slot.getBoundingClientRect();
-    const logoWidth = logo.offsetWidth || 1;
     const stageCenter = stageRect.left + stageRect.width / 2;
     const logoCenter = slotRect.left + slotRect.width / 2;
 
     return {
       x: stageCenter - logoCenter,
-      scale: (stageRect.width * 0.9) / logoWidth,
+      scale: 1,
     };
   }
 
+  private measureLogoEnd(stage: HTMLElement, logo: HTMLElement): { x: number; scale: number } {
+    const stageRect = stage.getBoundingClientRect();
+    const gap =
+      parseFloat(getComputedStyle(stage).columnGap || getComputedStyle(stage).gap) || 0;
+    const colWidth = (stageRect.width - gap) / 2;
+    const logoWidth = logo.offsetWidth || 1;
+    // Fill the left column so logo + copy share the stage evenly
+    const scale = Math.min(1, (colWidth * 0.98) / logoWidth);
+
+    return { x: 0, scale };
+  }
+
   private setup(): void {
+    // Don't tear down / rebuild scroll while the welcome morph is running
+    if (this.morphing) return;
+
     const hero = this.hero?.nativeElement;
     const stage = this.stage?.nativeElement;
     const logo = this.logo?.nativeElement;
@@ -558,7 +596,8 @@ export class Layout {
       gsap.set(logo, {
         x: start.x,
         scale: start.scale,
-        transformOrigin: 'center center',
+        force3D: false,
+        transformOrigin: 'right center',
       });
 
       gsap.set(presentacion, {
@@ -591,10 +630,12 @@ export class Layout {
           scale: () => this.measureLogoStart(stage, logo).scale,
         },
         {
-          x: 0,
-          scale: 1,
+          x: () => this.measureLogoEnd(stage, logo).x,
+          scale: () => this.measureLogoEnd(stage, logo).scale,
           ease: 'none',
           duration: 1,
+          force3D: false,
+          transformOrigin: 'right center',
           immediateRender: false,
         },
         0,

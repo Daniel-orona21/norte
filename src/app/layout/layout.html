@@ -14,13 +14,13 @@
   <div class="hero__stage" #stage>
     <div class="logo-slot">
       <div class="logo" #logo [class.logo--settled]="introDone">
-        <div class="logo__wordmark" #wordmark>
+        <div class="logo__wordmark" #wordmark aria-label="Norte">
           <div class="logo__n" #letterN>
             <svg
               class="logo__morph"
-              width="203"
-              height="274"
-              viewBox="0 0 203 274"
+              width="167"
+              height="215"
+              viewBox="0 0 167 215"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
               aria-label="Morph A / N"
@@ -41,7 +41,7 @@
                 [attr.d]="grayPathD"
                 [attr.opacity]="grayOpacity"
                 stroke="#b3b3b3"
-                stroke-width="15"
+                stroke-width="13"
                 stroke-linecap="round"
                 stroke-linejoin="round"
               />
@@ -52,7 +52,7 @@
                   [attr.d]="morphStemD"
                   [attr.opacity]="morphStemOpacity"
                   stroke="black"
-                  stroke-width="15"
+                  stroke-width="13"
                   stroke-linecap="round"
                   stroke-linejoin="round"
                 />
@@ -60,7 +60,7 @@
                   #morphBody
                   [attr.d]="morphBodyD"
                   stroke="black"
-                  stroke-width="15"
+                  stroke-width="13"
                   stroke-linecap="round"
                   stroke-linejoin="round"
                 />
@@ -70,21 +70,7 @@
 
           <div class="logo__orte-track" #orteTrack>
             <div class="logo__orte" #orteRest>
-              <svg
-                class="logo__orte-svg"
-                width="943"
-                height="262"
-                viewBox="0 0 943 262"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                aria-label="ORTE"
-              >
-                <path d="M629.706 19.5054L629.58 244.87" stroke="black" stroke-width="15" stroke-linecap="round"/>
-                <path d="M535.389 18.6407H724.022" stroke="black" stroke-width="15" stroke-linecap="round"/>
-                <path d="M246.271 129.876C246.271 202.877 192.177 255.256 127.46 253.857C56.795 253.857 5.53946 196.835 7.55757 129.984C6.47456 57.7684 61.2705 7.5 127.427 7.5C193.875 7.5 246.271 56.8753 246.271 129.876Z" stroke="black" stroke-width="15" stroke-linecap="round"/>
-                <path d="M305.51 149.367H374.111L412.688 149.367C502.28 149.367 501.975 19.8932 412.688 19.8929L335.509 19.8931C318.941 19.8932 305.51 33.3246 305.51 49.8932V149.367ZM374.111 149.367L461.73 246.665M305.51 149.367V246.665" stroke="black" stroke-width="15" stroke-linecap="round"/>
-                <path d="M927.624 19.2563C927.624 19.2563 839.658 19.2563 817.052 19.2563C794.446 19.2563 788.956 37.3665 788.956 46.446C788.956 55.5255 788.956 128.922 788.956 128.922M788.956 128.922H900.24M788.956 128.922C788.956 128.922 788.956 192.311 788.956 217.137C788.956 241.963 817.052 241.91 817.052 241.91H935.176" stroke="black" stroke-width="15" stroke-linecap="round"/>
-              </svg>
+              <span class="logo__orte-text" aria-hidden="true">orte</span>
             </div>
           </div>
         </div>
