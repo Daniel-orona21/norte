@@ -29,6 +29,13 @@ html {
     overflow-y: auto;
 }
 
+body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    margin: 0;
+}
+
 .cursor-dot {
   position: fixed;
   top: 0;

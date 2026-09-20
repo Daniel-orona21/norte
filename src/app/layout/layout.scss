@@ -271,6 +271,7 @@
 .hero {
   position: relative;
   width: 100%;
+  max-width: 100%;
   display: flex;
   justify-content: center;
   height: 200vh;
@@ -286,6 +287,8 @@
   align-items: center;
   gap: clamp(4rem, 10vw, 12rem);
   width: min(80%, 68rem);
+  max-width: 100%;
+  margin-inline: auto;
   // background-color: blue;
   height: 100vh;
   padding: 0rem;
@@ -314,6 +317,7 @@
 
 .servicios {
   margin-top: -20vh;
+  background-color: red;
 }
 
 .logo__wordmark {
