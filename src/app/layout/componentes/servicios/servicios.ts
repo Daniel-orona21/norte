@@ -1,6 +1,8 @@
 import {
   afterNextRender,
+  ChangeDetectorRef,
   Component,
+  CUSTOM_ELEMENTS_SCHEMA,
   DestroyRef,
   ElementRef,
   inject,
@@ -9,10 +11,16 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SplitText } from 'gsap/SplitText';
 import type { IconNode } from 'lucide';
+import { createMorph, type Morph } from 'morphicons/dom';
+import { animate, stagger, type AnimationPlaybackControls } from 'motion';
+import 'motion-components/motion-headline';
+import 'motion-components/motion-ticker';
 import {
   Cloud,
   File,
+  GitBranch,
   Globe,
+  Layers,
   Lock,
   Monitor,
   Moon,
@@ -27,6 +35,15 @@ import {
   Wifi,
   Zap,
 } from 'lucide';
+
+type MotionHeadlineEl = HTMLElement & {
+  play(): Promise<void>;
+  cancel(): void;
+  once: boolean;
+};
+
+const HEADLINE_INTERVAL = 0.05;
+const HEADLINE_DURATION = 0.45;
 
 gsap.registerPlugin(ScrollTrigger, SplitText);
 
@@ -79,7 +96,7 @@ const RAW_ICONS: ZoomIconConfig[] = [
 
   // 1
   { icon: Smartphone, layer: 1, startZ: -4550, endZ: 1100, left: '55%', top: '18%', width: '14vw' },
-  { icon: Rocket, layer: 1, startZ: -4620, endZ: 1080, right: '50%', top: '30%', width: '14vw', rotateDeg: -90 },
+  { icon: Rocket, layer: 1, startZ: -4620, endZ: 1080, right: '50%', top: '20%', width: '14vw', rotateDeg: -90 },
 
   // 0 — fondo
   { icon: Moon, layer: 0, startZ: -5000, endZ: 1060, left: '30%', top: '58%', width: '13vw' },
@@ -93,6 +110,51 @@ const ZOOM_ICONS: ZoomIconConfig[] = RAW_ICONS.map((cfg) => {
     startZ: cfg.startZ + (cfg.endZ - cfg.startZ) * bake,
   };
 });
+
+interface ServiceCard {
+  title: string;
+  icon: IconNode;
+  desc: string;
+}
+
+const SERVICE_CARDS: ServiceCard[] = [
+  {
+    title: 'SOFTWARE',
+    icon: Layers,
+    desc: 'Desarrollo de sistemas para llevar cada proyecto a donde necesita llegar.',
+  },
+  {
+    title: 'WEB',
+    icon: Globe,
+    desc: 'Construcción de plataformas digitales escalables y optimizadas para potenciar la presencia y conversión de tu negocio.',
+  },
+  {
+    title: 'MÓVIL',
+    icon: Smartphone,
+    desc: 'Diseño y desarrollo de aplicaciones fluidas e intuitivas para conectar directamente con tus usuarios en cualquier dispositivo.',
+  },
+  {
+    title: 'INTEGRACIONES',
+    icon: GitBranch,
+    desc: 'Conexión y automatización de tus herramientas existentes para optimizar el flujo de datos y la eficiencia operativa.',
+  },
+];
+
+const PRODUCT_TICKER = [
+  'CRM',
+  'ERP',
+  'APPS',
+  'LANDING',
+  'ECOMMERCE',
+  'PORTAL WEB',
+  'iOS',
+  'ANDROID',
+  'FLUTTER',
+  'REACT NATIVE',
+  'UI/UX',
+  'APIs & REST',
+  'WEBHOOKS',
+] as const;
 
 function paintLucideIcon(svg: SVGElement, icon: IconNode): void {
   while (svg.firstChild) svg.removeChild(svg.firstChild);
@@ -110,19 +172,66 @@ function paintLucideIcon(svg: SVGElement, icon: IconNode): void {
   imports: [],
   templateUrl: './servicios.html',
   styleUrl: './servicios.scss',
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
 export class Servicios {
   readonly zoomIcons = ZOOM_ICONS;
+  readonly serviceCards = SERVICE_CARDS;
+  /** Duplicado para que el loop del ticker no deje hueco al empalmar */
+  readonly productTicker = [...PRODUCT_TICKER, ...PRODUCT_TICKER];
+  tickerReady = false;
 
   private readonly host = inject(ElementRef<HTMLElement>);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly cdr = inject(ChangeDetectorRef);
   private ctx?: gsap.Context;
+  private serviceMorph?: Morph;
+  private cursorDot: HTMLElement | null = null;
+
+  /** Envuelve las "i" con <strong> como en el CV (portafol<strong>i</strong>o) */
+  titleChars(title: string): string[] {
+    return Array.from(title);
+  }
+
+  isTitleI(ch: string): boolean {
+    return /[iíIÍ]/.test(ch);
+  }
 
   constructor() {
-    afterNextRender(() => this.initDemo());
+    afterNextRender(() => {
+      this.initCursor();
+      this.initDemo();
+    });
 
     this.destroyRef.onDestroy(() => {
+      this.serviceMorph?.destroy();
       this.ctx?.revert();
+    });
+  }
+
+  private setCursorActive(active: boolean): void {
+    this.cursorDot?.classList.toggle('is-active', active);
+  }
+
+  private initCursor(): void {
+    const root = this.host.nativeElement as HTMLElement;
+    const dot = root.querySelector('.cursor-dot') as HTMLElement | null;
+    if (!dot) return;
+
+    // Fuera del host para que mix-blend-mode haga difference con toda la página
+    document.body.appendChild(dot);
+    this.cursorDot = dot;
+
+    const onMove = (e: PointerEvent) => {
+      dot.style.left = `${e.clientX}px`;
+      dot.style.top = `${e.clientY}px`;
+    };
+
+    window.addEventListener('pointermove', onMove, { passive: true });
+    this.destroyRef.onDestroy(() => {
+      window.removeEventListener('pointermove', onMove);
+      this.cursorDot = null;
+      dot.remove();
     });
   }
 
@@ -138,6 +247,14 @@ export class Servicios {
       if (!cfg || !(svg instanceof SVGElement)) return;
       paintLucideIcon(svg, cfg.icon);
     });
+
+    const morphPath = root.querySelector('.morph-path') as SVGPathElement | null;
+    const serviceIcons = SERVICE_CARDS.map((card) => card.icon);
+    if (morphPath && serviceIcons[0]) {
+      this.serviceMorph?.destroy();
+      this.serviceMorph = createMorph(morphPath, serviceIcons[0]);
+      this.serviceMorph.set(serviceIcons[0]);
+    }
 
     this.ctx = gsap.context(() => {
       const FAINT_Z = -4000;
@@ -166,14 +283,197 @@ export class Servicios {
       gsap.set('.heading', { z: -900, opacity: 0.45 });
       applyOpacity();
 
-      const zoomTl = gsap.timeline({
+      const pinSection = root.querySelector('.pin-section');
+      const list = root.querySelector('.list');
+      const fill = root.querySelector('.fill');
+      const listItems = gsap.utils.toArray<HTMLElement>('li', list);
+      const slides = gsap.utils.toArray<HTMLElement>('.slide', root);
+
+      const zoomScrollPct = 160;
+      const pinScrollPct = listItems.length * 50;
+      const totalScrollPct = zoomScrollPct + pinScrollPct;
+      const zoomDur = zoomScrollPct;
+      const pinStart = zoomDur;
+      const zoomFraction = zoomScrollPct / totalScrollPct;
+      let activeServiceIdx = 0;
+      let visibleHeadlineIdx = 0;
+
+      const headlines = Array.from(
+        root.querySelectorAll('motion-headline'),
+      ) as MotionHeadlineEl[];
+
+      let swapToken = 0;
+      let activeExit: AnimationPlaybackControls | null = null;
+
+      const lineUnits = (el: HTMLElement) =>
+        Array.from(el.querySelectorAll<HTMLElement>(':scope > span > span'));
+
+      const exitHeadline = (el: MotionHeadlineEl, direction: number) => {
+        const units = lineUnits(el);
+        if (!units.length) return Promise.resolve();
+
+        activeExit?.cancel();
+        const controls = animate(
+          units,
+          { y: direction >= 0 ? '-110%' : '110%' },
+          {
+            delay: stagger(HEADLINE_INTERVAL),
+            duration: HEADLINE_DURATION,
+            type: 'spring',
+            bounce: 0.05,
+          },
+        );
+        activeExit = controls;
+
+        return Promise.resolve(controls).then(() => {
+          if (activeExit === controls) activeExit = null;
+        });
+      };
+
+      const swapHeadline = async (
+        fromIdx: number,
+        toIdx: number,
+        direction: number,
+      ) => {
+        if (fromIdx === toIdx) return;
+
+        const token = ++swapToken;
+        const leaving = headlines[fromIdx];
+        const entering = headlines[toIdx];
+        const leaveSlide = slides[fromIdx];
+        const enterSlide = slides[toIdx];
+
+        slides.forEach((slide, i) => {
+          if (i === fromIdx || i === toIdx) return;
+          gsap.set(slide, { autoAlpha: 0, zIndex: 0 });
+          headlines[i]?.cancel();
+        });
+
+        if (leaveSlide) gsap.set(leaveSlide, { autoAlpha: 1, zIndex: 2 });
+        if (enterSlide) {
+          entering?.cancel();
+          gsap.set(enterSlide, { autoAlpha: 1, zIndex: 1 });
+        }
+
+        const exitPromise = leaving
+          ? exitHeadline(leaving, direction)
+          : Promise.resolve();
+
+        // Empieza la entrada casi de inmediato para no dejar hueco vacío
+        await new Promise<void>((r) => setTimeout(r, HEADLINE_INTERVAL * 1000));
+        if (token !== swapToken) return;
+
+        if (entering) {
+          entering.cancel();
+          void entering.play();
+        }
+        visibleHeadlineIdx = toIdx;
+
+        await exitPromise;
+        if (token !== swapToken) return;
+
+        leaving?.cancel();
+        if (leaveSlide) gsap.set(leaveSlide, { autoAlpha: 0, zIndex: 0 });
+        if (enterSlide) gsap.set(enterSlide, { zIndex: 1 });
+      };
+
+      const playHeadline = (idx: number) => {
+        const el = headlines[idx];
+        if (!el) return;
+        slides.forEach((s, i) => {
+          gsap.set(s, {
+            autoAlpha: i === idx ? 1 : 0,
+            zIndex: i === idx ? 1 : 0,
+          });
+          if (i !== idx) headlines[i]?.cancel();
+        });
+        el.cancel();
+        void el.play();
+        visibleHeadlineIdx = idx;
+      };
+
+      void customElements.whenDefined('motion-headline').then(() => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            headlines.forEach((h) => {
+              h.once = true;
+              h.cancel();
+            });
+            playHeadline(0);
+          });
+        });
+      });
+
+      if (pinSection) {
+        gsap.set(pinSection, { autoAlpha: 0, yPercent: 28 });
+      }
+
+      // Un solo pin: el título se queda fijo durante zoom + pin-section
+      const master = gsap.timeline({
         scrollTrigger: {
-          trigger: '.zoom-container',
+          trigger: '.que-hacemos',
           start: 'top top',
-          end: '+=160%',
+          end: `+=${totalScrollPct}%`,
           pin: true,
           scrub: 1,
-          onUpdate: () => applyOpacity(),
+          onLeave: () => this.setCursorActive(false),
+          onLeaveBack: () => this.setCursorActive(false),
+          onUpdate: (self) => {
+            applyOpacity();
+
+            // Activo cuando el pin-section entra y el heading sube
+            const pinVisible = self.progress >= zoomFraction;
+            this.setCursorActive(pinVisible);
+            if (pinVisible && !this.tickerReady) {
+              this.tickerReady = true;
+              this.cdr.detectChanges();
+            }
+
+            let nextIdx = 0;
+            if (self.progress >= zoomFraction) {
+              const pinP = gsap.utils.clamp(
+                0,
+                1,
+                (self.progress - zoomFraction) / (1 - zoomFraction),
+              );
+              nextIdx = Math.min(
+                Math.floor(pinP * serviceIcons.length),
+                serviceIcons.length - 1,
+              );
+            }
+
+            if (nextIdx === activeServiceIdx) return;
+
+            const prevIdx = activeServiceIdx;
+            activeServiceIdx = nextIdx;
+            void swapHeadline(visibleHeadlineIdx, nextIdx, self.direction);
+
+            const prevItem = listItems[prevIdx];
+            const nextItem = listItems[nextIdx];
+            if (prevItem) {
+              gsap.to(prevItem, {
+                scale: 1,
+                color: '#00000082',
+                duration: 0.2,
+                ease: 'power2.out',
+                overwrite: 'auto',
+              });
+            }
+            if (nextItem) {
+              gsap.to(nextItem, {
+                scale: 1.12,
+                color: '#000000',
+                duration: 0.2,
+                ease: 'power2.out',
+                overwrite: 'auto',
+              });
+            }
+
+            const morph = this.serviceMorph;
+            if (!morph || !serviceIcons.length) return;
+            const icon = serviceIcons[nextIdx];
+            if (icon) morph.morphTo(icon, 'smooth');
+          },
         },
       });
 
@@ -181,28 +481,88 @@ export class Servicios {
         const cfg = ZOOM_ICONS[i];
         if (!cfg) return;
 
-        zoomTl.to(
+        master.to(
           el,
           {
             z: cfg.endZ,
             scale: VISUAL_SCALE,
-            ease: 'power1.in',
-            duration: 1,
+            ease: 'power2.in',
+            duration: zoomDur,
           },
           0,
         );
       });
 
-      zoomTl.to(
+      master.to(
         '.heading',
         {
           opacity: 1,
           z: 60,
-          ease: 'power1.inOut',
-          duration: 1,
+          ease: 'power2.in',
+          duration: zoomDur,
         },
         0,
       );
+
+      // Título sube arriba y el pin entra desde abajo, mismo ritmo
+      const handoffDur = Math.max(24, pinScrollPct * 0.18);
+      master.to(
+        '.heading',
+        {
+          top: 'clamp(1rem, 5vh, 3rem)',
+          yPercent: 0,
+          ease: 'power2.inOut',
+          duration: handoffDur,
+        },
+        pinStart,
+      );
+
+      if (pinSection) {
+        master.to(
+          pinSection,
+          {
+            autoAlpha: 1,
+            yPercent: 0,
+            ease: 'power2.inOut',
+            duration: handoffDur,
+          },
+          pinStart,
+        );
+      }
+
+      if (fill) {
+        gsap.set(fill, {
+          scaleY: 1 / listItems.length,
+          transformOrigin: 'top left',
+        });
+      }
+
+      listItems.forEach((item, i) => {
+        if (i === 0) {
+          gsap.set(item, { color: '#000000', scale: 1.12 });
+          gsap.set(slides[i], { autoAlpha: 1 });
+        } else {
+          gsap.set(item, { color: '#00000082', scale: 1 });
+        }
+      });
+
+      slides.forEach((slide, i) => {
+        if (i === 0) return;
+        gsap.set(slide, { autoAlpha: 0 });
+      });
+
+      master
+        .to(
+          fill,
+          {
+            scaleY: 1,
+            transformOrigin: 'top left',
+            ease: 'none',
+            duration: pinScrollPct,
+          },
+          pinStart,
+        )
+        .to({}, { duration: 0.01 }, pinStart + pinScrollPct);
 
       const revealEl = root.querySelector('.opacity-reveal');
       if (!revealEl) return;

@@ -1,5 +1,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&display=swap');
 
+@font-face {
+  font-family: 'Joyride alt italic';
+  src: url('/fuentes/Joyride-Font/JoyrideALTItalic.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Joyride std italic';
+  src: url('/fuentes/Joyride-Font/JoyrideSTDItalic.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 * {
     margin: 0;
     box-sizing: border-box;
@@ -13,4 +27,30 @@ html {
     width: 100%;
     overflow-x: hidden;
     overflow-y: auto;
+}
+
+.cursor-dot {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 99999;
+  width: 80px;
+  height: 80px;
+  margin: -40px 0 0 -40px;
+  border-radius: 50%;
+  background: #fff;
+  mix-blend-mode: difference;
+  pointer-events: none;
+  transform: scale(0);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cursor-dot.is-active {
+  transform: scale(1);
+}
+
+@media (pointer: coarse) {
+  .cursor-dot {
+    display: none;
+  }
 }

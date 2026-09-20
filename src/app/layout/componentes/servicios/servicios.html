@@ -1,25 +1,75 @@
 <main>
-  <div class="zoom-container">
+  <div class="cursor-dot" aria-hidden="true"></div>
+
+  <div class="que-hacemos">
     <h1 class="heading">Qué hacemos?</h1>
 
-    @for (item of zoomIcons; track $index) {
-      <div
-        class="zoom-item"
-        [attr.data-layer]="item.layer"
-        [style.width]="item.width"
-        [style.left]="item.left ?? null"
-        [style.right]="item.right ?? null"
-        [style.top]="item.top ?? null"
-        [style.bottom]="item.bottom ?? null"
-      >
-        <svg
-          class="zoom-icon"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-          [style.transform]="item.rotateDeg != null ? 'rotate(' + item.rotateDeg + 'deg)' : null"
-        ></svg>
+    <div class="zoom-container">
+      @for (item of zoomIcons; track $index) {
+        <div
+          class="zoom-item"
+          [attr.data-layer]="item.layer"
+          [style.width]="item.width"
+          [style.left]="item.left ?? null"
+          [style.right]="item.right ?? null"
+          [style.top]="item.top ?? null"
+          [style.bottom]="item.bottom ?? null"
+        >
+          <svg
+            class="zoom-icon"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            [style.transform]="item.rotateDeg != null ? 'rotate(' + item.rotateDeg + 'deg)' : null"
+          ></svg>
+        </div>
+      }
+    </div>
+
+    <section class="section pin-section">
+      <div class="content">
+        <div class="secciones">
+          <p class="servicios-label">SERVICIOS</p>
+          <div class="secciones-list">
+            <ul class="list">
+              <li>SOFTWARE</li>
+              <li>WEB</li>
+              <li>MÓVIL</li>
+              <li>INTEGRACIONES</li>
+            </ul>
+            <div class="fill"></div>
+          </div>
+        </div>
+        <div class="right">
+          <!-- <div class="card-icon">
+            <svg class="card-icon-solid" viewBox="0 0 24 24" aria-hidden="true">
+              <path class="morph-path"></path>
+            </svg>
+          </div> -->
+          <div class="card-copy">
+            @for (card of serviceCards; track card.title) {
+              <article class="slide service-card">
+                <motion-headline
+                  class="card-desc"
+                  by="lines"
+                  interval="0.05"
+                  duration="0.45"
+                >{{ card.desc }}</motion-headline>
+              </article>
+            }
+          </div>
+        </div>
       </div>
-    }
+
+      <div class="productos">
+        @if (tickerReady) {
+          <motion-ticker speed="60" gap="32">
+            @for (item of productTicker; track $index) {
+              <span class="producto">{{ item }}</span>
+            }
+          </motion-ticker>
+        }
+      </div>
+    </section>
   </div>
 
   <section class="section-stick min-h-screen bg-black flex justify-center items-center text-white">

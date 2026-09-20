@@ -95,6 +95,7 @@ export class Layout {
   private boundPresentacion: HTMLElement | null = null;
   private scrollLocked = false;
   private scrollHintVisible = false;
+  private logoResizeObserver?: ResizeObserver;
   /** Once true, HMR/setup always snaps to the finished welcome logo. */
   introDone = !PLAY_WELCOME_INTRO;
 
@@ -119,6 +120,7 @@ export class Layout {
   constructor() {
     afterNextRender(() => {
       this.bindHotReload();
+      this.bindLogoResize();
       this.setup();
       this.runIntro();
     });
@@ -141,6 +143,8 @@ export class Layout {
     this.destroyRef.onDestroy(() => {
       this.morphTween?.kill();
       this.scrollHintTween?.kill();
+      this.logoResizeObserver?.disconnect();
+      this.logoResizeObserver = undefined;
       this.unlockScroll();
       this.teardown();
     });
@@ -251,7 +255,6 @@ export class Layout {
     const orteEl = this.orteRest?.nativeElement;
     const taglineEl = this.tagline?.nativeElement;
     const wordmarkEl = this.wordmark?.nativeElement;
-    const orteSvg = orteEl?.querySelector('svg') as SVGElement | null;
     if (!stemEl || !bodyEl || !orteEl || !taglineEl || !wordmarkEl) return;
 
     this.morphTween?.kill();
@@ -259,8 +262,7 @@ export class Layout {
     this.morphing = false;
     this.unlockScroll();
 
-    const orteWidth = this.measureOrteWidth();
-    if (orteSvg) orteSvg.style.width = `${orteWidth}px`;
+    this.syncOrteSizes(orteEl);
 
     stemEl.setAttribute('d', PATH_N_STEM);
     stemEl.setAttribute('opacity', '1');
@@ -274,18 +276,31 @@ export class Layout {
     this.fillProgress = 1;
     this.introDone = true;
 
-    gsap.set(orteEl, { width: orteWidth });
     gsap.set(wordmarkEl, { x: 0 });
-    gsap.set(taglineEl, { autoAlpha: 1, scale: .5 });
+    gsap.set(taglineEl, { autoAlpha: 1, scale: 0.5 });
 
     if (window.scrollY <= 8) this.showScrollHint();
     else this.hideScrollHint(true);
   }
 
-  private measureOrteWidth(): number {
-    const track = this.orteTrack?.nativeElement;
-    if (!track) return 1;
-    return Math.max(track.offsetWidth, 1);
+  /** Keep ORTE fluid (%, cqw) — never lock px widths that break on resize. */
+  private syncOrteSizes(orteEl = this.orteRest?.nativeElement): void {
+    if (!orteEl) return;
+    const orteSvg = orteEl.querySelector('svg') as SVGElement | null;
+    orteSvg?.style.removeProperty('width');
+    orteSvg?.style.removeProperty('height');
+    gsap.set(orteEl, { width: '100%' });
+  }
+
+  private bindLogoResize(): void {
+    const logo = this.logo?.nativeElement;
+    if (!logo || this.logoResizeObserver) return;
+
+    this.logoResizeObserver = new ResizeObserver(() => {
+      if (!this.introDone || this.morphing) return;
+      this.syncOrteSizes();
+    });
+    this.logoResizeObserver.observe(logo);
   }
 
   /** Shift wordmark so the A/N column sits on the logo (and stage) center. */
@@ -306,7 +321,6 @@ export class Layout {
     const orteEl = this.orteRest?.nativeElement;
     const taglineEl = this.tagline?.nativeElement;
     const wordmarkEl = this.wordmark?.nativeElement;
-    const orteSvg = orteEl?.querySelector('svg') as SVGElement | null;
     if (!stemEl || !bodyEl || !orteEl || !taglineEl || !wordmarkEl) return;
 
     this.lockScroll();
@@ -323,9 +337,10 @@ export class Layout {
     this.grayOpacity = 1;
     this.fillProgress = 0;
 
-    const orteWidth = this.measureOrteWidth();
     const centerOffset = this.measureLetterCenterOffset();
-    if (orteSvg) orteSvg.style.width = `${orteWidth}px`;
+    const orteSvg = orteEl.querySelector('svg') as SVGElement | null;
+    orteSvg?.style.removeProperty('width');
+    orteSvg?.style.removeProperty('height');
     gsap.set(orteEl, { width: 0 });
     gsap.set(wordmarkEl, { x: centerOffset });
     gsap.set(taglineEl, { autoAlpha: 0, scale: 0.5, transformOrigin: 'center center' });
@@ -340,9 +355,9 @@ export class Layout {
         bodyEl.setAttribute('d', PATH_N_BODY);
         stemEl.setAttribute('d', PATH_N_STEM);
         stemEl.setAttribute('opacity', '1');
-        gsap.set(orteEl, { width: orteWidth });
+        this.syncOrteSizes(orteEl);
         gsap.set(wordmarkEl, { x: 0 });
-        gsap.set(taglineEl, { autoAlpha: 1, scale: .5 });
+        gsap.set(taglineEl, { autoAlpha: 1, scale: 0.5 });
 
         this.ngZone.run(() => {
           this.morphBodyD = PATH_N_BODY;
@@ -405,7 +420,7 @@ export class Layout {
     tl.to(
       orteEl,
       {
-        width: orteWidth,
+        width: '100%',
         duration: .6,
         ease: 'power2.inOut',
       },
@@ -426,7 +441,7 @@ export class Layout {
       { autoAlpha: 0, scale: 0.5 },
       {
         autoAlpha: 1,
-        scale: .5,
+        scale: 0.5,
         duration: 1,
         ease: 'power2.out',
       },
@@ -495,7 +510,13 @@ export class Layout {
 
     if (logo) gsap.set(logo, { clearProps: 'transform' });
     if (presentacion) gsap.set(presentacion, { clearProps: 'all' });
-    // Keep ORTE / tagline / wordmark inline styles — reapplied in applyFinalIntroState
+    if (orteEl) {
+      const orteSvg = orteEl.querySelector('svg') as SVGElement | null;
+      orteSvg?.style.removeProperty('width');
+      orteSvg?.style.removeProperty('height');
+      gsap.set(orteEl, { clearProps: 'width' });
+    }
+    // Tagline / wordmark inline styles are reapplied in applyFinalIntroState
 
     this.boundHero = null;
     this.boundLogo = null;

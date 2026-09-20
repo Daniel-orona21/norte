@@ -282,10 +282,10 @@
   position: sticky;
   top: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: center;
-  gap: 15rem;
-  width: 80%;
+  gap: clamp(4rem, 10vw, 12rem);
+  width: min(80%, 68rem);
   // background-color: blue;
   height: 100vh;
   padding: 0rem;
@@ -293,7 +293,9 @@
 }
 
 .logo-slot {
-  width: 120%;
+  width: min(120%, 36rem);
+  max-width: 100%;
+  justify-self: start;
 }
 
 .logo {
@@ -308,6 +310,10 @@
     stroke-linecap: round;
     stroke-linejoin: round;
   }
+}
+
+.servicios {
+  margin-top: -20vh;
 }
 
 .logo__wordmark {
@@ -331,6 +337,7 @@
   width: 100%;
   height: auto;
   overflow: visible;
+  aspect-ratio: 203 / 274;
 }
 
 .logo__orte-track {
@@ -338,6 +345,7 @@
   z-index: 1;
   min-width: 0;
   overflow: hidden;
+  container-type: inline-size;
 }
 
 .logo__orte {
@@ -352,13 +360,18 @@
 
 .logo__orte-svg {
   display: block;
+  /* Always match the track width so resize can't desync N vs ORTE */
+  width: 100cqw;
+  max-width: none;
   height: auto;
+  aspect-ratio: 943 / 262;
 }
 
 .logo__tagline {
   display: block;
   width: min(100%, 745px);
   height: auto;
+  aspect-ratio: 745 / 29;
   opacity: 0;
   visibility: hidden;
   transform-origin: center center;
@@ -379,7 +392,8 @@
   padding: 0 !important;
   will-change: transform, opacity;
   visibility: hidden;
-  max-width: 800px;
+  max-width: min(100%, 36rem);
+  justify-self: start;
 
     h1 {
       font-size: 4.5rem;
