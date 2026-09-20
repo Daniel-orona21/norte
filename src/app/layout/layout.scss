@@ -342,8 +342,10 @@
   position: relative;
   z-index: 2;
   flex: 0 0 auto;
-  width: calc(167 / 215 * 1.1em);
+  width: calc(167 / 215 * 1.08em);
   overflow: visible;
+  /* Optical align with ORTE baseline */
+  transform: translateY(0.04em);
 }
 
 .logo__morph {

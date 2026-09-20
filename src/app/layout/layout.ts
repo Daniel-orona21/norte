@@ -37,7 +37,7 @@ const VIEW_H = 215;
  * `true`  → play animation and lock scroll until it finishes.
  * `false` → skip animation, show final logo, keep scroll free.
  */
-const PLAY_WELCOME_INTRO = false;
+const PLAY_WELCOME_INTRO = true;
 
 type ViteHot = {
   on: (event: string, cb: (...args: unknown[]) => void) => void;
