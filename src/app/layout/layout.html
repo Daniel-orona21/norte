@@ -1,16 +1,95 @@
 <section class="hero" #hero>
-    <div class="header">
+    <div class="header" #header>
         <div class="headerSide">
-            <p>logo</p>
+            <div class="header__logo" #headerLogo aria-hidden="true">
+              <span class="header__logo-mark" #headerLogoMark>N</span>
+            </div>
         </div>
-        <div class="headerSide">
-            <ul>
-                <li>qué hacemos</li>
-                <li>proyectos</li>
-                <li>contacto</li>
-            </ul>
+        <p class="header__brand" aria-hidden="true">
+          <span>n</span>
+          <span class="header__brand-sep">·</span>
+          <span>software solutions</span>
+        </p>
+        <div class="headerSide header__nav" #headerNav>
+            <button
+              #menuToggle
+              type="button"
+              class="header__menu"
+              [class.active]="menuOpen"
+              [attr.aria-label]="menuOpen ? 'Cerrar menú' : 'Abrir menú'"
+              [attr.aria-expanded]="menuOpen"
+              (click)="toggleMenu()"
+            >
+              <svg
+                class="header__menu-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path
+                  #menuMorphPath
+                  class="header__menu-path"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
         </div>
     </div>
+
+    <div
+      class="overlay"
+      #overlay
+      [attr.aria-hidden]="!menuOpen"
+    >
+      <div class="overlay-menu">
+        <div class="menu-item">
+          <div class="menu-item-name">
+            <p [attr.id]="activeSectionId === 'servicios' ? 'active' : null">
+              <a href="#servicios" (click)="onMenuNavigate($event, 'servicios')">Qué hacemos</a>
+              <span class="menu-strike" aria-hidden="true"></span>
+            </p>
+          </div>
+        </div>
+        <div class="menu-item">
+          <div class="menu-item-name">
+            <p [attr.id]="activeSectionId === 'proceso' ? 'active' : null">
+              <a href="#proceso" (click)="onMenuNavigate($event, 'proceso')">Proceso</a>
+              <span class="menu-strike" aria-hidden="true"></span>
+            </p>
+          </div>
+        </div>
+        <div class="menu-item">
+          <div class="menu-item-name">
+            <p [attr.id]="activeSectionId === 'proyectos' ? 'active' : null">
+              <a href="#proyectos" (click)="onMenuNavigate($event, 'proyectos')">Proyectos</a>
+              <span class="menu-strike" aria-hidden="true"></span>
+            </p>
+          </div>
+        </div>
+        <div class="menu-item">
+          <div class="menu-item-name">
+            <p [attr.id]="activeSectionId === 'contacto' ? 'active' : null">
+              <a href="#contacto" (click)="onMenuNavigate($event, 'contacto')">Contacto</a>
+              <span class="menu-strike" aria-hidden="true"></span>
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="sub-nav">
+        <p><a href="#">Twitter</a></p>
+        <p>·</p>
+        <p><a href="#">Instagram</a></p>
+        <p>·</p>
+        <p><a href="#">Dribbble</a></p>
+        <p>·</p>
+        <p><a href="#">Behance</a></p>
+      </div>
+    </div>
+
   <div class="hero__stage" #stage>
     <div class="logo-slot">
       <div class="logo" #logo [class.logo--settled]="introDone">
@@ -124,16 +203,16 @@
     </button>
   </div>
 </section>
-<section class="servicios">
+<section class="servicios" id="servicios">
 <app-servicios/>
 </section>
-<section class="proceso">
+<section class="proceso" id="proceso">
 <app-proceso/>
 </section>
-<section class="proyectos">
+<section class="proyectos" id="proyectos">
 <app-proyecto/>
 </section>
-<section class="cta">
+<section class="cta" id="contacto">
 <app-cta/>
 </section>
 <section class="footer">

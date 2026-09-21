@@ -1,6 +1,7 @@
 import {
   afterEveryRender,
   afterNextRender,
+  ChangeDetectorRef,
   Component,
   DestroyRef,
   ElementRef,
@@ -11,6 +12,8 @@ import {
 import { interpolate } from 'flubber';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { Menu, X } from 'lucide';
+import { createMorph, type Morph } from 'morphicons/dom';
 import { Servicios } from './componentes/servicios/servicios';
 import { Proceso } from './componentes/proceso/proceso';
 import { Proyecto } from './componentes/proyecto/proyecto';
@@ -55,6 +58,12 @@ export class Layout {
   @ViewChild('stage', { static: true }) stage!: ElementRef<HTMLElement>;
   @ViewChild('logo', { static: true }) logo!: ElementRef<HTMLElement>;
   @ViewChild('presentacion', { static: true }) presentacion!: ElementRef<HTMLElement>;
+  @ViewChild('header', { static: true }) header!: ElementRef<HTMLElement>;
+  @ViewChild('headerLogo', { static: true }) headerLogo!: ElementRef<HTMLElement>;
+  @ViewChild('headerNav', { static: true }) headerNav!: ElementRef<HTMLElement>;
+  @ViewChild('overlay', { static: true }) overlay!: ElementRef<HTMLElement>;
+  @ViewChild('menuToggle') menuToggle?: ElementRef<HTMLButtonElement>;
+  @ViewChild('menuMorphPath') menuMorphPath?: ElementRef<SVGPathElement>;
   @ViewChild('morphStem') morphStem?: ElementRef<SVGPathElement>;
   @ViewChild('morphBody') morphBody?: ElementRef<SVGPathElement>;
   @ViewChild('orteRest') orteRest?: ElementRef<HTMLElement>;
@@ -72,6 +81,9 @@ export class Layout {
   grayOpacity = PLAY_WELCOME_INTRO ? 1 : 0;
   fillProgress = PLAY_WELCOME_INTRO ? 0 : 1;
   morphing = false;
+  menuOpen = false;
+  /** Section currently in the viewport — drives the orange strikethrough in the menu. */
+  activeSectionId: 'servicios' | 'proceso' | 'proyectos' | 'contacto' = 'servicios';
 
   get fillY(): number {
     if (this.fillProgress <= 0) return VIEW_H + 40;
@@ -86,6 +98,7 @@ export class Layout {
 
   private readonly destroyRef = inject(DestroyRef);
   private readonly ngZone = inject(NgZone);
+  private readonly cdr = inject(ChangeDetectorRef);
   private ctx?: gsap.Context;
   private morphTween?: gsap.core.Tween | gsap.core.Timeline;
   private scrollHintTween?: gsap.core.Tween | gsap.core.Timeline;
@@ -93,6 +106,16 @@ export class Layout {
   private boundHero: HTMLElement | null = null;
   private boundLogo: HTMLElement | null = null;
   private boundPresentacion: HTMLElement | null = null;
+  private letterNDocked = false;
+  private letterNSpacer?: HTMLElement;
+  private letterNHome?: HTMLElement | null;
+  private headerNavRevealed = false;
+  private headerNavTween?: gsap.core.Tween;
+  private menuMorph?: Morph;
+  private menuTimeline?: gsap.core.Timeline;
+  private menuCtx?: gsap.Context;
+  private activeBarTween?: gsap.core.Tween;
+  private sectionSpyTriggers: ScrollTrigger[] = [];
   private scrollLocked = false;
   private scrollHintVisible = false;
   private logoResizeObserver?: ResizeObserver;
@@ -119,9 +142,17 @@ export class Layout {
 
   constructor() {
     afterNextRender(() => {
+      // Drop leftover hashes so reload doesn't jump to a section
+      if (window.location.hash) {
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+        window.scrollTo(0, 0);
+      }
       this.bindHotReload();
       this.bindLogoResize();
-      void this.boot();
+      this.initMenuMorph();
+      this.initMenuOverlay();
+      this.bindSectionSpy();
+      void this.boot().then(() => ScrollTrigger.refresh());
     });
 
     afterEveryRender(() => {
@@ -142,10 +173,320 @@ export class Layout {
     this.destroyRef.onDestroy(() => {
       this.morphTween?.kill();
       this.scrollHintTween?.kill();
+      this.menuMorph?.destroy();
+      this.menuMorph = undefined;
+      this.menuTimeline?.kill();
+      this.menuTimeline = undefined;
+      this.menuCtx?.revert();
+      this.menuCtx = undefined;
+      this.activeBarTween?.kill();
+      this.activeBarTween = undefined;
+      this.killSectionSpy();
+      document.body.style.overflow = '';
       this.logoResizeObserver?.disconnect();
       this.logoResizeObserver = undefined;
       this.unlockScroll();
       this.teardown();
+    });
+  }
+
+  toggleMenu(): void {
+    if (!this.menuTimeline) return;
+
+    if (this.menuOpen) {
+      this.animateActiveBar(0);
+      this.menuTimeline.timeScale(1.35).reverse();
+      document.body.style.overflow = '';
+    } else {
+      this.syncActiveSectionFromScroll();
+      this.overlay?.nativeElement.classList.add('is-open');
+      this.resetAllStrikes();
+      this.menuTimeline.timeScale(1).play();
+      this.animateActiveBar(1, 0.35);
+      document.body.style.overflow = 'hidden';
+    }
+
+    this.menuOpen = !this.menuOpen;
+    this.menuMorph?.morphTo(this.menuOpen ? X : Menu, 'snappy');
+  }
+
+  private initMenuMorph(): void {
+    const path = this.menuMorphPath?.nativeElement;
+    if (!path) return;
+    this.menuMorph?.destroy();
+    this.menuMorph = createMorph(path, Menu);
+    this.menuMorph.set(Menu);
+    this.menuOpen = false;
+  }
+
+  private initMenuOverlay(): void {
+    const overlay = this.overlay?.nativeElement;
+    const header = this.header?.nativeElement;
+    if (!overlay) return;
+
+    this.menuTimeline?.kill();
+    this.menuCtx?.revert();
+
+    const brand = header?.querySelector('.header__brand') as HTMLElement | null;
+
+    this.menuCtx = gsap.context(() => {
+      gsap.set('.menu-item p', { y: 120 });
+      gsap.set('.menu-strike', {
+        scaleX: 0,
+        yPercent: -50,
+        transformOrigin: 'left center',
+      });
+      gsap.set('.sub-nav', { bottom: '5%', opacity: 0 });
+      if (brand) gsap.set(brand, { opacity: 0 });
+      gsap.set(overlay, {
+        clipPath: 'polygon(0 0, 100% 0, 100% 0, 0 0)',
+      });
+
+      const timeline = gsap.timeline({
+        paused: true,
+        onReverseComplete: () => {
+          overlay.classList.remove('is-open');
+        },
+      });
+
+      timeline.to(
+        overlay,
+        {
+          clipPath: 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)',
+          duration: 0.55,
+          ease: 'power4.inOut',
+        },
+        0,
+      );
+
+      timeline.to(
+        '.menu-item p',
+        {
+          y: 0,
+          duration: 0.55,
+          stagger: 0.05,
+          ease: 'power4.out',
+        },
+        '-=0.35',
+      );
+
+      if (brand) {
+        timeline.to(
+          brand,
+          {
+            opacity: 1,
+            duration: 0.35,
+            delay: 0.05,
+          },
+          '<',
+        );
+      }
+
+      timeline.to(
+        '.sub-nav',
+        {
+          bottom: '10%',
+          opacity: 1,
+          duration: 0.25,
+          delay: 0.1,
+        },
+        '<',
+      );
+
+      this.menuTimeline = timeline;
+    }, overlay);
+  }
+
+  private killSectionSpy(): void {
+    this.sectionSpyTriggers.forEach((st) => st.kill());
+    this.sectionSpyTriggers = [];
+  }
+
+  private readonly menuSectionIds = [
+    'servicios',
+    'proceso',
+    'proyectos',
+    'contacto',
+  ] as const;
+
+  /** Keep the orange strikethrough on the menu title for the section in view. */
+  private bindSectionSpy(): void {
+    this.killSectionSpy();
+
+    const st = ScrollTrigger.create({
+      start: 0,
+      end: 'max',
+      onUpdate: () => this.syncActiveSectionFromScroll(),
+      onRefresh: () => this.syncActiveSectionFromScroll(),
+    });
+    this.sectionSpyTriggers.push(st);
+    this.syncActiveSectionFromScroll();
+  }
+
+  /**
+   * Pick the last section whose top has crossed ~35% of the viewport.
+   * Works scrolling up and down, including when returning to the hero.
+   */
+  private syncActiveSectionFromScroll(): void {
+    const probe = window.innerHeight * 0.35;
+    let current: (typeof this.menuSectionIds)[number] = this.menuSectionIds[0];
+
+    for (const id of this.menuSectionIds) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      if (el.getBoundingClientRect().top <= probe) {
+        current = id;
+      }
+    }
+
+    if (this.menuOpen) {
+      this.transitionActiveSection(current);
+    } else {
+      this.setActiveSection(current);
+    }
+  }
+
+  private setActiveSection(
+    id: 'servicios' | 'proceso' | 'proyectos' | 'contacto',
+  ): void {
+    if (this.activeSectionId === id) return;
+    this.activeSectionId = id;
+    // Sync DOM so p#active / .menu-strike queries match the viewport section
+    this.ngZone.run(() => this.cdr.detectChanges());
+  }
+
+  private getActiveStrike(): HTMLElement | null {
+    return (
+      this.overlay?.nativeElement.querySelector('p#active .menu-strike') ?? null
+    );
+  }
+
+  /** Force every fringe closed — only one title may be struck at a time. */
+  private resetAllStrikes(): void {
+    const strikes =
+      this.overlay?.nativeElement.querySelectorAll('.menu-strike');
+    if (!strikes?.length) return;
+    gsap.set(strikes, {
+      scaleX: 0,
+      yPercent: -50,
+      transformOrigin: 'left center',
+    });
+  }
+
+  /** Grow (1) or shrink (0) the strike on the current #active title only. */
+  private animateActiveBar(to: 0 | 1, delay = 0, onComplete?: () => void): void {
+    this.activeBarTween?.kill();
+
+    if (to === 0) {
+      const el = this.getActiveStrike();
+      if (!el) {
+        this.resetAllStrikes();
+        onComplete?.();
+        return;
+      }
+      this.activeBarTween = gsap.to(el, {
+        scaleX: 0,
+        yPercent: -50,
+        transformOrigin: 'left center',
+        duration: 0.45,
+        delay,
+        ease: 'power4.out',
+        overwrite: true,
+        onComplete: () => {
+          this.resetAllStrikes();
+          onComplete?.();
+        },
+      });
+      return;
+    }
+
+    // Grow: clear every fringe first, then wipe only the active one
+    this.resetAllStrikes();
+    const el = this.getActiveStrike();
+    if (!el) {
+      onComplete?.();
+      return;
+    }
+    this.activeBarTween = gsap.fromTo(
+      el,
+      { scaleX: 0, yPercent: -50, transformOrigin: 'left center' },
+      {
+        scaleX: 1,
+        yPercent: -50,
+        transformOrigin: 'left center',
+        duration: 0.5,
+        delay,
+        ease: 'power4.out',
+        overwrite: true,
+        onComplete: () => onComplete?.(),
+      },
+    );
+  }
+
+  /**
+   * Move the strike to the viewport section (shrink old → clear all → grow new).
+   * Always leaves exactly one fringe open when the menu is open.
+   */
+  private transitionActiveSection(
+    id: 'servicios' | 'proceso' | 'proyectos' | 'contacto',
+    onDone?: () => void,
+  ): void {
+    if (this.activeSectionId === id) {
+      onDone?.();
+      return;
+    }
+
+    if (!this.menuOpen) {
+      this.setActiveSection(id);
+      onDone?.();
+      return;
+    }
+
+    this.activeBarTween?.kill();
+    const prev = this.getActiveStrike();
+
+    const showNew = () => {
+      this.setActiveSection(id);
+      this.resetAllStrikes();
+      this.animateActiveBar(1, 0, onDone);
+    };
+
+    if (prev && Number(gsap.getProperty(prev, 'scaleX')) > 0.02) {
+      this.activeBarTween = gsap.to(prev, {
+        scaleX: 0,
+        yPercent: -50,
+        transformOrigin: 'left center',
+        duration: 0.3,
+        ease: 'power4.out',
+        overwrite: true,
+        onComplete: showNew,
+      });
+    } else {
+      showNew();
+    }
+  }
+
+  /** Close overlay and scroll to a section without leaving a hash in the URL. */
+  onMenuNavigate(event: Event, sectionId: string): void {
+    event.preventDefault();
+
+    // Close first so animateActiveBar(0) still targets the current fringe
+    if (this.menuOpen) this.toggleMenu();
+
+    if (
+      sectionId === 'servicios' ||
+      sectionId === 'proceso' ||
+      sectionId === 'proyectos' ||
+      sectionId === 'contacto'
+    ) {
+      this.setActiveSection(sectionId);
+    }
+
+    const target = document.getElementById(sectionId);
+    if (!target) return;
+
+    requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }
 
@@ -504,6 +845,19 @@ export class Layout {
     this.scrollHintTween?.kill();
     this.scrollHintTween = undefined;
     this.scrollHintVisible = false;
+    this.headerNavTween?.kill();
+    this.headerNavTween = undefined;
+    this.headerNavRevealed = false;
+
+    const letterN = this.letterN?.nativeElement;
+    if (letterN && this.letterNDocked) {
+      this.releaseLetterDock(letterN);
+    } else {
+      this.letterNSpacer?.remove();
+      this.letterNSpacer = undefined;
+      this.letterNHome = undefined;
+      this.letterNDocked = false;
+    }
 
     this.ctx?.revert();
     this.ctx = undefined;
@@ -515,6 +869,7 @@ export class Layout {
     const orteEl = this.orteRest?.nativeElement;
     const taglineEl = this.tagline?.nativeElement;
     const hint = this.scrollHint?.nativeElement;
+    const headerNav = this.headerNav?.nativeElement;
 
     if (logo) gsap.killTweensOf(logo);
     if (presentacion) gsap.killTweensOf(presentacion);
@@ -522,19 +877,37 @@ export class Layout {
     if (orteEl) gsap.killTweensOf(orteEl);
     if (taglineEl) gsap.killTweensOf(taglineEl);
     if (hint) gsap.killTweensOf(hint);
+    if (letterN) gsap.killTweensOf(letterN);
+    if (headerNav) {
+      gsap.killTweensOf(headerNav);
+      gsap.set(headerNav, { autoAlpha: 0 });
+    }
 
     ScrollTrigger.getAll().forEach((st) => {
-      if (st.trigger === hero || st.trigger === this.boundHero) {
+      if (
+        st.trigger === hero ||
+        st.trigger === this.boundHero ||
+        st.trigger === logo ||
+        st.trigger === this.boundLogo ||
+        st.vars.id === 'logo-n-dock'
+      ) {
         st.kill();
       }
     });
 
     if (logo) gsap.set(logo, { clearProps: 'transform' });
     if (presentacion) gsap.set(presentacion, { clearProps: 'all' });
+    if (letterN) {
+      letterN.classList.remove('is-docked');
+      gsap.set(letterN, {
+        clearProps: 'position,left,top,width,height,zIndex,margin,transform,transformOrigin',
+      });
+    }
     if (orteEl) {
       gsap.set(orteEl, {
         clipPath:
           this.introDone || !PLAY_WELCOME_INTRO ? 'inset(0 0% 0 0)' : 'inset(0 100% 0 0)',
+        clearProps: 'opacity,visibility',
       });
     }
     // Tagline / wordmark inline styles are reapplied in applyFinalIntroState
@@ -573,6 +946,140 @@ export class Layout {
     return { x: 0, scale };
   }
 
+  /**
+   * Lift the same N into document.body as position:fixed (pixel-matched),
+   * so it isn't clipped by .hero__stage overflow or trapped by the logo's transform.
+   * Leaves a ghost clone (black @ 0.2) in the wordmark so ORTE/tagline keep their seat.
+   */
+  private armLetterDock(letterN: HTMLElement): void {
+    if (this.letterNDocked) return;
+
+    const rect = letterN.getBoundingClientRect();
+    this.letterNHome = letterN.parentElement;
+
+    if (!this.letterNSpacer) {
+      const ghost = letterN.cloneNode(true) as HTMLElement;
+      ghost.classList.add('logo__n-ghost');
+      ghost.removeAttribute('id');
+      ghost.setAttribute('aria-hidden', 'true');
+
+      // Avoid duplicate SVG clipPath ids with the flying original
+      ghost.querySelectorAll('clipPath[id]').forEach((el, i) => {
+        const prev = el.id;
+        const next = `${prev}-ghost-${i}`;
+        el.id = next;
+        ghost
+          .querySelectorAll(`[clip-path="url(#${prev})"]`)
+          .forEach((g) => g.setAttribute('clip-path', `url(#${next})`));
+      });
+
+      ghost.querySelectorAll('path').forEach((path) => {
+        path.setAttribute('stroke', '#000');
+        path.removeAttribute('opacity');
+      });
+
+      this.letterNHome?.insertBefore(ghost, letterN);
+      this.letterNSpacer = ghost;
+    }
+
+    // Reparent out of transformed/overflow ancestors BEFORE fixed — no jump
+    document.body.appendChild(letterN);
+    letterN.classList.add('is-docked');
+    gsap.set(letterN, {
+      position: 'fixed',
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+      x: 0,
+      y: 0,
+      scale: 1,
+      zIndex: 50,
+      margin: 0,
+      transformOrigin: 'center center',
+    });
+    this.letterNDocked = true;
+  }
+
+  private releaseLetterDock(letterN: HTMLElement): void {
+    const home = this.letterNHome;
+    const spacer = this.letterNSpacer;
+
+    letterN.classList.remove('is-docked');
+    gsap.set(letterN, {
+      clearProps: 'position,left,top,width,height,zIndex,margin,transform,transformOrigin',
+    });
+
+    if (home) {
+      if (spacer && spacer.parentElement === home) {
+        home.insertBefore(letterN, spacer);
+      } else {
+        home.appendChild(letterN);
+      }
+    }
+
+    spacer?.remove();
+    this.letterNSpacer = undefined;
+    this.letterNHome = undefined;
+    this.letterNDocked = false;
+  }
+
+  private revealHeaderNav(headerNav: HTMLElement | undefined, show: boolean): void {
+    if (!headerNav) return;
+    if (show === this.headerNavRevealed) return;
+    this.headerNavRevealed = show;
+    this.headerNavTween?.kill();
+    this.headerNavTween = gsap.to(headerNav, {
+      autoAlpha: show ? 1 : 0,
+      duration: 0.3,
+      ease: 'power2.out',
+      overwrite: true,
+    });
+  }
+
+  /** Scrub the fixed N from the live ghost seat to the header mark. */
+  private applyLetterDock(
+    letterN: HTMLElement,
+    headerLogo: HTMLElement,
+    progress: number,
+    headerNav?: HTMLElement,
+  ): void {
+    const p = gsap.utils.clamp(0, 1, progress);
+
+    if (p <= 0) {
+      if (this.letterNDocked) this.releaseLetterDock(letterN);
+      this.revealHeaderNav(headerNav, false);
+      return;
+    }
+
+    this.armLetterDock(letterN);
+
+    // Live ghost rect — tracks ORTE as the section scrolls so the N never lags downward
+    const ghost = this.letterNSpacer;
+    if (!ghost) return;
+    const from = ghost.getBoundingClientRect();
+    const to = headerLogo.getBoundingClientRect();
+    const t = gsap.parseEase('power2.inOut')(p);
+
+    // Quadratic bezier: up first (control keeps start X at header Y), then sideways
+    const cpX = from.left;
+    const cpY = to.top;
+    const inv = 1 - t;
+
+    const left = inv * inv * from.left + 2 * inv * t * cpX + t * t * to.left;
+    const top = inv * inv * from.top + 2 * inv * t * cpY + t * t * to.top;
+
+    gsap.set(letterN, {
+      left,
+      top,
+      width: from.width + (to.width - from.width) * t,
+      height: from.height + (to.height - from.height) * t,
+    });
+
+    // Timed reveal (0.3s), not scrubbed — fires once the N has arrived
+    this.revealHeaderNav(headerNav, p >= 0.98);
+  }
+
   private setup(): void {
     // Don't tear down / rebuild scroll while the welcome morph is running
     if (this.morphing) return;
@@ -581,7 +1088,10 @@ export class Layout {
     const stage = this.stage?.nativeElement;
     const logo = this.logo?.nativeElement;
     const presentacion = this.presentacion?.nativeElement;
-    if (!hero || !stage || !logo || !presentacion) return;
+    const headerLogo = this.headerLogo?.nativeElement;
+    const headerNav = this.headerNav?.nativeElement;
+    const letterN = this.letterN?.nativeElement;
+    if (!hero || !stage || !logo || !presentacion || !headerLogo || !letterN) return;
 
     this.teardown();
 
@@ -605,6 +1115,9 @@ export class Layout {
         x: 0,
       });
 
+      if (headerNav) gsap.set(headerNav, { autoAlpha: 0 });
+
+      // Original hero flow only — logo + presentación (entrada / salida / reversa)
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: hero,
@@ -651,6 +1164,34 @@ export class Layout {
         },
         0.95,
       );
+
+      // Dock N → header: after presentación is fully shown, with hold,
+      // then a short scrub so it settles in the header without needing much scroll.
+      ScrollTrigger.create({
+        id: 'logo-n-dock',
+        trigger: hero,
+        start: 'bottom 80%',
+        end: '+=160',
+        scrub: 0.45,
+        invalidateOnRefresh: true,
+        onUpdate: (self) => {
+          this.applyLetterDock(letterN, headerLogo, self.progress, headerNav);
+        },
+        onLeave: () => {
+          this.applyLetterDock(letterN, headerLogo, 1, headerNav);
+        },
+        onLeaveBack: () => {
+          this.applyLetterDock(letterN, headerLogo, 0, headerNav);
+        },
+        onRefresh: (self) => {
+          if (self.progress <= 0) {
+            this.applyLetterDock(letterN, headerLogo, 0, headerNav);
+            return;
+          }
+          if (this.letterNDocked) this.releaseLetterDock(letterN);
+          this.applyLetterDock(letterN, headerLogo, self.progress, headerNav);
+        },
+      });
     }, hero);
 
     ScrollTrigger.refresh();
