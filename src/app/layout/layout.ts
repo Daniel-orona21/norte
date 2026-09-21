@@ -1154,16 +1154,34 @@ export class Layout {
         0,
       );
 
-      tl.to(
-        presentacion,
-        {
-          autoAlpha: 1,
-          x: 0,
-          ease: 'power2.out',
-          duration: 0.35,
+      // Presentación: timed 0.3s (not scrubbed), at the same scroll point as before (~0.95)
+      ScrollTrigger.create({
+        id: 'presentacion-reveal',
+        trigger: hero,
+        start: () => {
+          const dist = Math.max(0, hero.offsetHeight - window.innerHeight);
+          return `top+=${dist * 0.95} top`;
         },
-        0.95,
-      );
+        invalidateOnRefresh: true,
+        onEnter: () => {
+          gsap.to(presentacion, {
+            autoAlpha: 1,
+            x: 0,
+            duration: 0.3,
+            ease: 'power2.out',
+            overwrite: 'auto',
+          });
+        },
+        onLeaveBack: () => {
+          gsap.to(presentacion, {
+            autoAlpha: 0,
+            x: 0,
+            duration: 0.3,
+            ease: 'power2.out',
+            overwrite: 'auto',
+          });
+        },
+      });
 
       // Dock N → header: after presentación is fully shown, with hold,
       // then a short scrub so it settles in the header without needing much scroll.
