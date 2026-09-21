@@ -186,7 +186,6 @@ export class Servicios {
   private readonly cdr = inject(ChangeDetectorRef);
   private ctx?: gsap.Context;
   private serviceMorph?: Morph;
-  private cursorDot: HTMLElement | null = null;
 
   /** Envuelve las "i" con <strong> como en el CV (portafol<strong>i</strong>o) */
   titleChars(title: string): string[] {
@@ -199,39 +198,12 @@ export class Servicios {
 
   constructor() {
     afterNextRender(() => {
-      this.initCursor();
       this.initDemo();
     });
 
     this.destroyRef.onDestroy(() => {
       this.serviceMorph?.destroy();
       this.ctx?.revert();
-    });
-  }
-
-  private setCursorActive(active: boolean): void {
-    this.cursorDot?.classList.toggle('is-active', active);
-  }
-
-  private initCursor(): void {
-    const root = this.host.nativeElement as HTMLElement;
-    const dot = root.querySelector('.cursor-dot') as HTMLElement | null;
-    if (!dot) return;
-
-    // Fuera del host para que mix-blend-mode haga difference con toda la página
-    document.body.appendChild(dot);
-    this.cursorDot = dot;
-
-    const onMove = (e: PointerEvent) => {
-      dot.style.left = `${e.clientX}px`;
-      dot.style.top = `${e.clientY}px`;
-    };
-
-    window.addEventListener('pointermove', onMove, { passive: true });
-    this.destroyRef.onDestroy(() => {
-      window.removeEventListener('pointermove', onMove);
-      this.cursorDot = null;
-      dot.remove();
     });
   }
 
@@ -416,14 +388,11 @@ export class Servicios {
           end: `+=${totalScrollPct}%`,
           pin: true,
           scrub: 1,
-          onLeave: () => this.setCursorActive(false),
-          onLeaveBack: () => this.setCursorActive(false),
           onUpdate: (self) => {
             applyOpacity();
 
             // Activo cuando el pin-section entra y el heading sube
             const pinVisible = self.progress >= zoomFraction;
-            this.setCursorActive(pinVisible);
             if (pinVisible && !this.tickerReady) {
               this.tickerReady = true;
               this.cdr.detectChanges();

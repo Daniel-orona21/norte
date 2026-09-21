@@ -119,6 +119,7 @@ export class Layout {
   private scrollLocked = false;
   private scrollHintVisible = false;
   private logoResizeObserver?: ResizeObserver;
+  private readonly host = inject(ElementRef<HTMLElement>);
   /** Once true, HMR/setup always snaps to the finished welcome logo. */
   introDone = !PLAY_WELCOME_INTRO;
 
@@ -147,6 +148,7 @@ export class Layout {
         history.replaceState(null, '', window.location.pathname + window.location.search);
         window.scrollTo(0, 0);
       }
+      this.initCursor();
       this.bindHotReload();
       this.bindLogoResize();
       this.initMenuMorph();
@@ -208,6 +210,74 @@ export class Layout {
 
     this.menuOpen = !this.menuOpen;
     this.menuMorph?.morphTo(this.menuOpen ? X : Menu, 'snappy');
+  }
+
+  private initCursor(): void {
+    const root = this.host.nativeElement as HTMLElement;
+    const dot = root.querySelector('.cursor-dot') as HTMLElement | null;
+    if (!dot) return;
+
+    // Touch / coarse pointers: no custom cursor
+    if (window.matchMedia('(hover: none), (pointer: coarse)').matches) {
+      dot.remove();
+      return;
+    }
+
+    // Fuera del host para que mix-blend-mode haga difference con toda la página
+    document.body.appendChild(dot);
+
+    let visible = false;
+    let showRaf = 0;
+
+    const show = () => {
+      if (visible) return;
+      visible = true;
+      // Posición primero, scale después → la transición no arranca desde (0,0)
+      cancelAnimationFrame(showRaf);
+      showRaf = requestAnimationFrame(() => {
+        dot.classList.add('is-active');
+      });
+    };
+
+    const hide = () => {
+      if (!visible) return;
+      visible = false;
+      cancelAnimationFrame(showRaf);
+      dot.classList.remove('is-active');
+    };
+
+    const isOverHero = (x: number, y: number): boolean => {
+      const hero = this.hero?.nativeElement;
+      if (!hero) return false;
+      const r = hero.getBoundingClientRect();
+      return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+    };
+
+    const onMove = (e: PointerEvent) => {
+      if (e.pointerType && e.pointerType !== 'mouse') return;
+      dot.style.left = `${e.clientX}px`;
+      dot.style.top = `${e.clientY}px`;
+
+      if (isOverHero(e.clientX, e.clientY)) hide();
+      else show();
+    };
+
+    const onDocLeave = (e: MouseEvent) => {
+      // Solo cuando el puntero sale de la ventana (relatedTarget null)
+      if (e.relatedTarget == null) hide();
+    };
+
+    window.addEventListener('pointermove', onMove, { passive: true });
+    document.documentElement.addEventListener('mouseleave', onDocLeave);
+    window.addEventListener('blur', hide);
+
+    this.destroyRef.onDestroy(() => {
+      cancelAnimationFrame(showRaf);
+      window.removeEventListener('pointermove', onMove);
+      document.documentElement.removeEventListener('mouseleave', onDocLeave);
+      window.removeEventListener('blur', hide);
+      dot.remove();
+    });
   }
 
   private initMenuMorph(): void {
