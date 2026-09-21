@@ -23,6 +23,27 @@ app-layout .logo--settled .logo__orte {
   font-style: normal;
 }
 
+@font-face {
+  font-family: 'Joyride std outline italic';
+  src: url('/fuentes/Joyride-Font/JoyrideSTDOutlineItalic.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Joyride alt outline italic';
+  src: url('/fuentes/Joyride-Font/JoyrideALTOutlineItalic.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Joyride wide italic';
+  src: url('/fuentes/Joyride-Font/JoyrideWIDEItalic.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 * {
     margin: 0;
     box-sizing: border-box;

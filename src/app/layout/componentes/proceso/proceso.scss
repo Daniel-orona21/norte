@@ -1,0 +1,207 @@
+.cuerpo {
+  width: 100%;
+  display: flex;
+  padding-top: 1rem;
+  align-items: center;
+  flex-direction: column;
+  position: relative;
+  overflow: visible;
+
+  .textos {
+    display: flex;
+    flex-direction: row;
+    position: relative;
+    justify-content: center;
+    width: 100%;
+    overflow: visible;
+    padding: 5vh 0;
+
+    .svg-slot {
+      position: absolute;
+      top: 50%;
+      right: 0;
+      width: 1px;
+      height: 1px;
+      pointer-events: none;
+    }
+
+    h1 {
+      font-family: 'Joyride std outline italic', sans-serif;
+      bottom: 0;
+      left: 0;
+      font-size: 7vw;
+      text-transform: uppercase;
+      font-weight: normal;
+      letter-spacing: 0;
+      white-space: nowrap;
+      margin: 0;
+
+      strong {
+        font-family: 'Joyride alt outline italic', sans-serif;
+        font-weight: normal;
+      }
+    }
+  }
+
+  // Sibling of textos/pasos so difference blends with the whole section
+  .svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 30;
+    height: 100px;
+    aspect-ratio: 167 / 215;
+    // White + difference → reads as black on light backgrounds (same as header/cursor)
+    color: #fff;
+    pointer-events: none;
+    mix-blend-mode: difference;
+
+    .svg__a {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  }
+
+  .pasos {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10rem;
+    padding: 2rem 5%;
+    padding-top: 10rem;
+
+    .contenedorPaso {
+      width: 100%;
+      display: flex;
+
+      &:nth-child(odd) {
+        justify-content: flex-start;
+
+        .paso {
+          text-align: left;
+          flex-direction: row;
+        }
+      }
+
+      &:nth-child(even) {
+        justify-content: flex-end;
+
+        .paso {
+          text-align: right;
+          flex-direction: row-reverse;
+        }
+      }
+
+      .paso {
+        position: relative;
+        width: min(100%, 42rem);
+        max-width: 48%;
+        display: flex;
+        align-items: stretch;
+        gap: 1.5rem;
+
+        .numero-slot {
+          flex: 0 0 auto;
+          align-self: center;
+          width: clamp(2.75rem, 5vw, 4rem);
+          aspect-ratio: 1 / 1;
+          position: relative;
+        }
+
+        .separador {
+          flex: 0 0 auto;
+          align-self: stretch;
+          width: 1px;
+          background-color: #000;
+        }
+
+        .numero {
+          display: block;
+          width: 100%;
+          height: 100%;
+          overflow: visible;
+
+          text {
+            font-family: 'Joyride wide italic', sans-serif;
+            font-size: 88px;
+            fill: #000;
+          }
+        }
+
+        .pasoContenido {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+        }
+
+        .titulo {
+          margin: 0 0 0.75rem;
+          font-size: clamp(1.1rem, 2vw, 1.5rem);
+          font-weight: 500;
+          text-transform: uppercase;
+        }
+
+        .descripcion {
+          margin: 0;
+          line-height: 1.5;
+          font-size: clamp(0.95rem, 1.4vw, 1.15rem);
+        }
+
+        .marker {
+          position: absolute;
+          inset: 0;
+          margin: auto;
+          width: 1px;
+          height: 1px;
+          pointer-events: none;
+          opacity: 0;
+        }
+      }
+    }
+  }
+
+  .flyer-exit {
+    position: absolute;
+    left: -20vw;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  .proceso-end {
+    width: 100%;
+    height: 1px;
+    pointer-events: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .cuerpo {
+    .textos {
+      h1 {
+        font-size: 9vw;
+        margin-top: 1rem;
+      }
+    }
+
+    .pasos {
+      gap: 2rem;
+      padding: 1.5rem 1rem;
+
+      .contenedorPaso {
+        justify-content: flex-start !important;
+
+        .paso {
+          max-width: 100%;
+          width: 100%;
+          text-align: left !important;
+          flex-direction: row !important;
+        }
+      }
+    }
+  }
+}
