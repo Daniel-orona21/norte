@@ -1,1 +1,52 @@
-<p>footer works!</p>
+<footer>
+  <div class="container">
+    <div class="grid">
+      <div class="brand">
+        <h2>Norte</h2>
+        <p>Enlaces de interés.</p>
+      </div>
+
+      <div class="secciones-contactanos">
+        <div class="secciones">
+          <h3>Secciones</h3>
+          <nav>
+            <a (click)="scrollTo('inicio')">Inicio</a>
+            <a (click)="scrollTo('servicios')">Qué hacemos</a>
+            <a (click)="scrollTo('proceso')">Proceso</a>
+            <a (click)="scrollTo('proyectos')">Proyectos</a>
+          </nav>
+        </div>
+
+        <div class="contactanos">
+          <h3>Redes sociales</h3>
+          <address>
+            <a
+              href="https://www.instagram.com/norte.sw/"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="underline"
+            >
+              &#64;norte.sw
+            </a>
+          </address>
+        </div>
+      </div>
+
+      <div class="contactanos">
+        <h3>Contáctanos</h3>
+        <address>
+          <a href="mailto:contacto.nortedgo@gmail.com">
+            contacto.nortedgo&#64;gmail.com
+          </a>
+          <a href="https://wa.me/526185264244" target="_blank" rel="noopener noreferrer">
+            (618) 526-4244
+          </a>
+        </address>
+      </div>
+    </div>
+
+    <div class="bottom">
+      <p>© All rights reserved.</p>
+    </div>
+  </div>
+</footer>

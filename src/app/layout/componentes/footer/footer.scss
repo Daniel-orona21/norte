@@ -1,0 +1,148 @@
+:host {
+  --background: #ffffff;
+  --foreground: #171717;
+  --muted-foreground: #737373;
+  --primary: #2cdc6e;
+  --border: #e5e7eb;
+
+  display: block;
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+footer {
+  position: relative;
+  border-top: 1px solid var(--border);
+}
+
+.container {
+  width: 80vw;
+  margin: 0 auto;
+  padding: 3rem 1rem;
+}
+
+.grid {
+  display: grid;
+  gap: 3rem;
+  padding-top: 1rem;
+}
+
+.brand {
+  position: relative;
+}
+
+h2 {
+  margin: 0 0 1rem;
+  font-size: 1.875rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 2.25rem;
+}
+
+h3 {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.75rem;
+}
+
+.brand p,
+.bottom p {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--muted-foreground);
+}
+
+nav,
+address {
+  font-size: 0.875rem;
+  font-style: normal;
+  line-height: 1.25rem;
+}
+
+nav a,
+address a,
+address p {
+  display: block;
+  margin: 0;
+  color: var(--foreground);
+  text-decoration: none;
+}
+
+nav a + a,
+address a + a,
+address p + p,
+address a + p,
+address p + a {
+  margin-top: 0.5rem;
+}
+
+a {
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.underline {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.bottom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .secciones-contactanos {
+    display: contents;
+  }
+
+  .container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .container {
+    width: 90vw;
+    padding-bottom: 2rem;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .secciones-contactanos {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+  }
+}

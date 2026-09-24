@@ -166,7 +166,8 @@
 
   .flyer-exit {
     position: absolute;
-    left: -20vw;
+    left: auto;
+    right: -20vw;
     width: 1px;
     height: 1px;
     pointer-events: none;
