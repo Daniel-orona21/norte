@@ -34,6 +34,7 @@
     "morphicons": "^1.7.1",
     "motion-components": "^0.6.0",
     "rxjs": "~7.8.0",
+    "split-type": "^0.3.4",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"
   },

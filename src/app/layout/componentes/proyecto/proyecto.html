@@ -1,1 +1,52 @@
-<p>proyecto works!</p>
+<div class="container" #root>
+  <div class="blurry-prev">
+    <img [src]="initialImage" [alt]="initialItem.title" />
+    <div class="overlay"></div>
+  </div>
+
+  <div class="col site-info">
+    <div class="header">
+      <p class="eyebrow">Proyectos seleccionados</p>
+      <h1>Llevamos cada proyecto en la dirección correcta.</h1>
+    </div>
+    <div class="copy">
+      <p>
+        Diseñamos y desarrollamos soluciones digitales que combinan tecnología, diseño y funcionalidad.
+      </p>
+      <p class="header__brand">
+        <span>n</span>
+        <span class="header__brand-sep">·</span>
+        <span>software solutions</span>
+      </p>
+    </div>
+  </div>
+
+  <div class="col project-preview">
+    <div class="project-details">
+      <div class="title">
+        <h1 class="title-kimera">{{ initialItem.title }}</h1>
+      </div>
+      <div class="info">
+        <p>{{ initialItem.copy }}</p>
+      </div>
+      <div class="credits"><p>VALOR</p></div>
+      <div class="director"><p>{{ initialItem.director }}</p></div>
+    </div>
+
+    <a
+      class="project-img is-link"
+      [href]="initialItem.url"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <img class="project-photo" [src]="initialImage" [alt]="initialItem.title" />
+      <div class="project-mark" aria-hidden="true">
+        <h1 class="title-kimera">{{ initialItem.markText }}</h1>
+      </div>
+    </a>
+  </div>
+
+  <div class="gallery-wrapper">
+    <div class="gallery"></div>
+  </div>
+</div>
