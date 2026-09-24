@@ -109,8 +109,17 @@ app-proyecto {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.18em;
-    color: var(--accent);
     margin-bottom: 1em;
+    background-image: linear-gradient(
+      105deg,
+      #19b85a 0%,
+      #2cdc6e 48%,
+      #8aefb2 100%
+    );
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
   }
 
   .header h1 {
@@ -192,8 +201,17 @@ app-proyecto {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.18em;
-    color: var(--accent);
     line-height: 1.9;
+    background-image: linear-gradient(
+      105deg,
+      #19b85a 0%,
+      #2cdc6e 48%,
+      #8aefb2 100%
+    );
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
   }
 
   .director p {

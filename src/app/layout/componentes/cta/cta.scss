@@ -1,0 +1,145 @@
+:host {
+  --ink: #111111;
+  --ink-soft: #8a8494;
+  --ink-body: #5c5c5c;
+
+  display: block;
+  width: 100%;
+  min-height: 100vh;
+  background: #fff;
+  color: var(--ink);
+}
+
+.container {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 8rem 6vw 5rem;
+}
+
+h1 {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  font-size: clamp(2.35rem, 1.1rem + 3.6vw, 4.35rem);
+  font-weight: 650;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+}
+
+.title-lead {
+  color: var(--ink);
+}
+
+.title-accent {
+  background-image: linear-gradient(
+    105deg,
+    #19b85a 0%,
+    #2cdc6e 48%,
+    #8aefb2 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  font-weight: 560;
+}
+
+.lead {
+  max-width: 34ch;
+  margin: 1.35rem 0 0;
+  font-size: clamp(0.95rem, 0.85rem + 0.4vw, 1.1rem);
+  font-weight: 400;
+  line-height: 1.55;
+  color: var(--ink-body);
+}
+
+.note {
+  margin: 1.15rem 0 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.cta-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65em;
+  margin-top: 1.75rem;
+  padding: 0.85em 1.55em;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  color: var(--ink);
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+.cta-action:hover {
+  background: var(--ink);
+  color: #fff;
+}
+
+.cta-action__icon {
+  width: 1.15em;
+  height: 1.15em;
+  flex: 0 0 auto;
+}
+
+.visual {
+  position: relative;
+  min-height: 100%;
+  overflow: hidden;
+}
+
+.visual-photo {
+  position: absolute;
+  inset: -14% 0;
+  width: 100%;
+  height: 128%;
+  object-fit: cover;
+  object-position: 70% 42%;
+  will-change: transform;
+}
+
+@media (max-width: 900px) {
+  .container {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .copy {
+    padding: 6.5rem 1.5rem 2.5rem;
+  }
+
+  .visual {
+    min-height: 56vh;
+  }
+}
+
+@media (max-width: 768px) {
+  h1 {
+    font-size: clamp(2rem, 9vw, 2.6rem);
+  }
+
+  .visual {
+    min-height: 46vh;
+  }
+}
