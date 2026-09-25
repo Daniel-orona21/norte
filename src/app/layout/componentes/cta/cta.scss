@@ -119,7 +119,7 @@ h1 {
   will-change: transform;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 900px) and (orientation: portrait) {
   .container {
     grid-template-columns: 1fr;
     min-height: 0;
@@ -134,12 +134,40 @@ h1 {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 768px) and (orientation: portrait) {
   h1 {
     font-size: clamp(2rem, 9vw, 2.6rem);
   }
 
   .visual {
     min-height: 46vh;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  :host {
+    min-height: 100vh;
+  }
+
+  .container {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    min-height: 100vh;
+  }
+
+  .copy {
+    padding: 4.5rem 4vw 2.5rem;
+  }
+
+  h1 {
+    font-size: clamp(1.55rem, 7vh, 2.4rem);
+  }
+
+  .lead {
+    font-size: clamp(0.82rem, 2.8vh, 1rem);
+    margin-top: 0.7rem;
+  }
+
+  .visual {
+    min-height: 100%;
   }
 }

@@ -186,6 +186,15 @@ export class Servicios {
   private readonly cdr = inject(ChangeDetectorRef);
   private ctx?: gsap.Context;
   private serviceMorph?: Morph;
+  private layoutMq?: MediaQueryList;
+  private readonly onLayoutMqChange = () => {
+    this.serviceMorph?.destroy();
+    this.serviceMorph = undefined;
+    this.ctx?.revert();
+    this.ctx = undefined;
+    this.tickerReady = false;
+    this.initDemo();
+  };
 
   /** Envuelve las "i" con <strong> como en el CV (portafol<strong>i</strong>o) */
   titleChars(title: string): string[] {
@@ -199,9 +208,14 @@ export class Servicios {
   constructor() {
     afterNextRender(() => {
       this.initDemo();
+      this.layoutMq = window.matchMedia(
+        '(max-width: 768px) and (orientation: portrait)',
+      );
+      this.layoutMq.addEventListener('change', this.onLayoutMqChange);
     });
 
     this.destroyRef.onDestroy(() => {
+      this.layoutMq?.removeEventListener('change', this.onLayoutMqChange);
       this.serviceMorph?.destroy();
       this.ctx?.revert();
     });
@@ -252,8 +266,27 @@ export class Servicios {
         gsap.set(el, { z: cfg.startZ, scale: VISUAL_SCALE });
       });
 
-      const isMobile = window.matchMedia('(max-width: 768px)').matches;
-      gsap.set('.heading', { z: isMobile ? -260 : -900, opacity: isMobile ? 0.7 : 0.45 });
+      const isMobile = window
+        .matchMedia('(max-width: 768px) and (orientation: portrait)')
+        .matches;
+      const heading = root.querySelector('.heading-anchor') as HTMLElement | null;
+      const headingTop = () =>
+        getComputedStyle(root.querySelector('.que-hacemos') ?? root)
+          .getPropertyValue('--heading-top')
+          .trim() || '3rem';
+
+      if (heading) {
+        gsap.set(heading, {
+          left: '50%',
+          top: '50%',
+          xPercent: -50,
+          yPercent: -50,
+          x: 0,
+          y: 0,
+          z: isMobile ? -260 : -900,
+          opacity: isMobile ? 0.7 : 0.45,
+        });
+      }
       applyOpacity();
 
       const pinSection = root.querySelector('.pin-section');
@@ -393,6 +426,7 @@ export class Servicios {
           end: `+=${totalScrollPct}%`,
           pin: true,
           scrub: 1,
+          invalidateOnRefresh: true,
           onUpdate: (self) => {
             applyOpacity();
 
@@ -479,31 +513,32 @@ export class Servicios {
         );
       });
 
-      master.to(
-        '.heading',
-        {
-          opacity: 1,
-          z: 60,
-          ease: 'power2.in',
-          duration: zoomDur,
-        },
-        0,
-      );
+      if (heading) {
+        master.to(
+          heading,
+          {
+            opacity: 1,
+            z: 60,
+            ease: 'power2.in',
+            duration: zoomDur,
+          },
+          0,
+        );
 
-      // Título sube arriba y el pin entra desde abajo, mismo ritmo
-      master.to(
-        '.heading',
-        {
-          top: () =>
-            window.matchMedia('(max-width: 768px)').matches
-              ? '4.5rem'
-              : 'clamp(1rem, 5vh, 3rem)',
-          yPercent: 0,
-          ease: 'power2.inOut',
-          duration: handoffDur,
-        },
-        pinStart,
-      );
+        master.to(
+          heading,
+          {
+            top: headingTop,
+            xPercent: -50,
+            yPercent: 0,
+            x: 0,
+            y: 0,
+            ease: 'power2.inOut',
+            duration: handoffDur,
+          },
+          pinStart,
+        );
+      }
 
       if (pinSection) {
         master.to(

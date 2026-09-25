@@ -54,7 +54,7 @@ export class Proceso implements AfterViewInit, OnDestroy {
 
     this.ctx = gsap.context(() => {
       ScrollTrigger.matchMedia({
-        '(min-width: 769px)': () => {
+        '(min-width: 769px), (orientation: landscape)': () => {
           gsap.set(h1Elements, { letterSpacing: '28px', opacity: 0 });
 
           gsap
@@ -79,7 +79,7 @@ export class Proceso implements AfterViewInit, OnDestroy {
           this.animarPasos(pasos, { offset: 120, fromLeftOnMobile: false });
         },
 
-        '(max-width: 768px)': () => {
+        '(max-width: 768px) and (orientation: portrait)': () => {
           gsap.set(h1Elements, { letterSpacing: '28px', opacity: 0 });
 
           gsap

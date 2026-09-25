@@ -18,6 +18,7 @@ main {
 }
 
 .que-hacemos {
+  --heading-top: 3rem;
   position: relative;
   height: 100vh;
   overflow: hidden;
@@ -25,20 +26,24 @@ main {
   perspective-origin: 50% 48%;
 }
 
-.heading {
-  font-size: clamp(3.125rem, 3.464vw + 2.229rem, 5rem);
-  line-height: clamp(4.688rem, 3.349vw + 3.821rem, 6.5rem);
-  text-align: center;
-  opacity: 0.04;
-  font-weight: 300;
+.heading-anchor {
   position: absolute;
   left: 50%;
-  margin: 0;
   top: 50%;
-  transform: translate3d(-50%, -50%, -3200px);
-  white-space: nowrap;
   z-index: 30;
   pointer-events: none;
+  margin: 0;
+  opacity: 0.04;
+}
+
+.heading {
+  font-size: clamp(3.125rem, 3.464vw + 2.229rem, 5rem);
+  line-height: 1;
+  text-align: center;
+  opacity: inherit;
+  font-weight: 300;
+  margin: 0;
+  white-space: nowrap;
 }
 
 .zoom-container {
@@ -364,12 +369,15 @@ main {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 768px) and (orientation: portrait) {
+  .que-hacemos {
+    --heading-top: 4.5rem;
+  }
+
   .heading {
     font-size: clamp(1.7rem, 7.6vw, 2.15rem);
     line-height: 1.05;
     max-width: calc(100% - 2.5rem);
-    transform: translate3d(-50%, -50%, -400px);
   }
 
   .content {
@@ -424,5 +432,54 @@ main {
 
   .productos {
     bottom: 1.25rem;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .que-hacemos {
+    --heading-top: 3.15rem;
+  }
+
+  .heading {
+    font-size: clamp(1.25rem, 5.5vh, 1.85rem);
+    line-height: 1;
+    max-width: calc(100vw - 7.5rem);
+  }
+
+  .content {
+    margin: 0 1.5rem;
+  }
+
+  .content ul {
+    font-size: clamp(1.05rem, 4.8vh, 1.5rem);
+  }
+
+  .card-copy {
+    min-height: 6.5rem;
+    width: min(70vw, calc(100% - 8rem));
+  }
+
+  .card-icon {
+    width: clamp(72px, 18vh, 140px);
+    height: clamp(72px, 18vh, 140px);
+  }
+
+  .service-card {
+    .card-title {
+      font-size: clamp(1.15rem, 5vh, 1.75rem);
+    }
+
+    .card-desc {
+      font-size: clamp(1rem, 4.6vh, 1.65rem);
+      max-width: min(52ch, 58vw);
+    }
+  }
+
+  .productos {
+    bottom: 0.65rem;
+
+    .producto {
+      font-size: clamp(0.72rem, 2.4vh, 0.95rem);
+    }
   }
 }

@@ -118,6 +118,7 @@ export class Layout {
   private activeBarTween?: gsap.core.Tween;
   private sectionSpyTriggers: ScrollTrigger[] = [];
   private scrollLocked = false;
+  private menuScrollLocked = false;
   private scrollHintVisible = false;
   private logoResizeObserver?: ResizeObserver;
   private heroMq?: MediaQueryList;
@@ -188,6 +189,7 @@ export class Layout {
       this.activeBarTween = undefined;
       this.killSectionSpy();
       document.body.style.overflow = '';
+      this.unlockMenuScroll();
       this.logoResizeObserver?.disconnect();
       this.logoResizeObserver = undefined;
       this.heroMq?.removeEventListener('change', this.onHeroMqChange);
@@ -203,14 +205,14 @@ export class Layout {
     if (this.menuOpen) {
       this.animateActiveBar(0);
       this.menuTimeline.timeScale(1.35).reverse();
-      document.body.style.overflow = '';
+      this.unlockMenuScroll();
     } else {
       this.syncActiveSectionFromScroll();
       this.overlay?.nativeElement.classList.add('is-open');
       this.resetAllStrikes();
       this.menuTimeline.timeScale(1).play();
       this.animateActiveBar(1, 0.35);
-      document.body.style.overflow = 'hidden';
+      this.lockMenuScroll();
     }
 
     this.menuOpen = !this.menuOpen;
@@ -669,6 +671,32 @@ export class Layout {
     }
   }
 
+  /** Lock page scroll without overflow:hidden — that unsticks .cta and jumps the photo. */
+  private lockMenuScroll(): void {
+    if (this.menuScrollLocked) return;
+    this.menuScrollLocked = true;
+    window.addEventListener('wheel', this.preventScroll, {
+      passive: false,
+      capture: true,
+    });
+    window.addEventListener('touchmove', this.preventScroll, {
+      passive: false,
+      capture: true,
+    });
+    window.addEventListener('keydown', this.preventScrollKeys, {
+      passive: false,
+      capture: true,
+    });
+  }
+
+  private unlockMenuScroll(): void {
+    if (!this.menuScrollLocked) return;
+    this.menuScrollLocked = false;
+    window.removeEventListener('wheel', this.preventScroll, true);
+    window.removeEventListener('touchmove', this.preventScroll, true);
+    window.removeEventListener('keydown', this.preventScrollKeys, true);
+  }
+
   private lockScroll(): void {
     if (this.scrollLocked) return;
     this.scrollLocked = true;
@@ -733,12 +761,12 @@ export class Layout {
   private readonly onHeroMqChange = () => this.queueSetup();
 
   private isMobileHero(): boolean {
-    return window.matchMedia('(max-width: 768px)').matches;
+    return window.matchMedia('(max-width: 768px) and (orientation: portrait)').matches;
   }
 
   private bindHeroBreakpoint(): void {
     if (this.heroMq) return;
-    this.heroMq = window.matchMedia('(max-width: 768px)');
+    this.heroMq = window.matchMedia('(max-width: 768px) and (orientation: portrait)');
     this.heroMq.addEventListener('change', this.onHeroMqChange);
   }
 

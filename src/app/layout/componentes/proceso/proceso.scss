@@ -183,7 +183,7 @@
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 768px) and (orientation: portrait) {
   .cuerpo {
     .textos {
       h1 {
@@ -202,6 +202,45 @@
 
       .contenedorPaso .paso {
         max-width: 86%;
+      }
+    }
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .cuerpo {
+    padding-top: 0.5rem;
+    padding-bottom: 8vh;
+
+    .textos {
+      padding: 2.5vh 0;
+
+      h1 {
+        font-size: clamp(2rem, 10vh, 4.5rem);
+      }
+    }
+
+    .svg {
+      height: clamp(40px, 14vh, 72px);
+    }
+
+    .pasos {
+      gap: 3.5rem;
+      padding: 1.25rem 4%;
+      padding-top: 3.5rem;
+
+      .contenedorPaso .paso {
+        max-width: 46%;
+        gap: 1rem;
+
+        .titulo {
+          margin-bottom: 0.4rem;
+          font-size: clamp(0.95rem, 3.2vh, 1.25rem);
+        }
+
+        .descripcion {
+          font-size: clamp(0.8rem, 2.8vh, 1rem);
+        }
       }
     }
   }

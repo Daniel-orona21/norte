@@ -394,7 +394,7 @@ app-proyecto {
     background-color: transparent;
   }
 
-  @media (max-width: 900px) {
+  @media (max-width: 900px) and (orientation: portrait) {
     height: auto;
 
     .container {
@@ -449,7 +449,7 @@ app-proyecto {
     }
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 768px) and (orientation: portrait) {
     .col.project-preview {
       padding: 1.25em;
       height: 28rem;
@@ -515,6 +515,94 @@ app-proyecto {
       width: calc(100% - 2.5em);
       height: 200px;
       max-height: 200px;
+    }
+  }
+
+  @media (orientation: landscape) and (max-height: 520px) {
+    height: 100vh;
+
+    .container {
+      flex-direction: row;
+      padding-block: 0;
+    }
+
+    .site-info {
+      flex: 1;
+      margin-block: 0;
+      padding-block: 1.25em;
+      padding-inline: 1.1em;
+      justify-content: space-between;
+      border-bottom: none;
+      border-right: 1px solid var(--hairline);
+    }
+
+    .site-info .copy {
+      display: block;
+    }
+
+    .header h1 {
+      font-size: clamp(1.05rem, 4.2vh, 1.45rem);
+    }
+
+    .copy p {
+      font-size: 12px;
+    }
+
+    .project-preview {
+      flex: 2;
+    }
+
+    .col.project-preview {
+      height: auto;
+      padding: 1.25em 1.1em;
+    }
+
+    .title {
+      height: clamp(40px, 12vh, 64px);
+    }
+
+    .title h1 {
+      font-size: clamp(1.2rem, 5vh, 1.75rem);
+    }
+
+    .title-logo {
+      height: clamp(36px, 11vh, 56px);
+      max-width: 220px;
+    }
+
+    .info p {
+      font-size: clamp(13px, 3.2vh, 16px);
+    }
+
+    .director p {
+      font-size: clamp(12px, 2.8vh, 15px);
+    }
+
+    .project-details {
+      top: 1.1em;
+      left: 1.1em;
+      width: min(420px, 56%);
+    }
+
+    .project-img {
+      left: 1.1em;
+      bottom: 1.1em;
+      width: 70%;
+      height: 42%;
+      max-height: 38vh;
+    }
+
+    .gallery-wrapper {
+      margin-block: 0;
+      padding: 0.55em 0.5em;
+      border-top: none;
+      border-left: 1px solid var(--hairline);
+    }
+
+    .gallery {
+      width: 72px;
+      height: 100%;
+      flex-direction: column;
     }
   }
 }

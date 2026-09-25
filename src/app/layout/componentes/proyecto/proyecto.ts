@@ -223,7 +223,9 @@ export class Proyecto implements AfterViewInit, OnDestroy {
         });
 
         const currentPhoto = projectImg.querySelector<HTMLElement>('.project-photo');
-        const restBottom = window.matchMedia('(max-width: 768px)').matches
+        const restBottom = window
+          .matchMedia('(max-width: 768px) and (orientation: portrait)')
+          .matches
           ? '1.25em'
           : '3.5em';
 

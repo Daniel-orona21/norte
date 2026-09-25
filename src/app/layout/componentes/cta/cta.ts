@@ -50,6 +50,18 @@ export class Cta implements AfterViewInit, OnDestroy {
     this.ctx?.revert();
     this.ctx = gsap.context(() => {
       const mm = gsap.matchMedia();
+      const section =
+        (root.closest('.cta') as HTMLElement | null) ?? root;
+
+      const flowTop = () => {
+        let y = 0;
+        let node: HTMLElement | null = section;
+        while (node) {
+          y += node.offsetTop;
+          node = node.offsetParent as HTMLElement | null;
+        }
+        return y;
+      };
 
       mm.add('(prefers-reduced-motion: no-preference)', () => {
         gsap.fromTo(
@@ -59,10 +71,10 @@ export class Cta implements AfterViewInit, OnDestroy {
             yPercent: 8,
             ease: 'none',
             scrollTrigger: {
-              trigger: root,
-              start: 'top bottom',
-              end: 'bottom top',
+              start: () => flowTop() - window.innerHeight,
+              end: () => flowTop() + section.offsetHeight,
               scrub: 0.6,
+              invalidateOnRefresh: true,
             },
           },
         );
