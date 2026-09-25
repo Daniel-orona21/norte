@@ -168,6 +168,8 @@
     position: absolute;
     left: auto;
     right: -20vw;
+    bottom: 5.5rem;
+    top: auto;
     width: 1px;
     height: 1px;
     pointer-events: none;
@@ -190,19 +192,16 @@
       }
     }
 
+    .svg {
+      height: 52px;
+    }
+
     .pasos {
-      gap: 2rem;
+      gap: 2.75rem;
       padding: 1.5rem 1rem;
 
-      .contenedorPaso {
-        justify-content: flex-start !important;
-
-        .paso {
-          max-width: 100%;
-          width: 100%;
-          text-align: left !important;
-          flex-direction: row !important;
-        }
+      .contenedorPaso .paso {
+        max-width: 86%;
       }
     }
   }

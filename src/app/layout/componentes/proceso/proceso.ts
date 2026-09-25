@@ -10,6 +10,7 @@ import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 gsap.registerPlugin(ScrollTrigger, MotionPathPlugin);
+ScrollTrigger.config({ ignoreMobileResize: true });
 
 @Component({
   selector: 'app-proceso',
@@ -23,9 +24,16 @@ export class Proceso implements AfterViewInit, OnDestroy {
   @ViewChild('flyer') flyer!: ElementRef<HTMLElement>;
 
   private ctx?: gsap.Context;
-  private resizeHandler = () => this.setupAnimations();
+  private lastViewportWidth = 0;
+  private resizeHandler = () => {
+    const width = window.innerWidth;
+    if (width === this.lastViewportWidth) return;
+    this.lastViewportWidth = width;
+    this.setupAnimations();
+  };
 
   ngAfterViewInit() {
+    this.lastViewportWidth = window.innerWidth;
     setTimeout(() => this.setupAnimations(), 100);
     window.addEventListener('resize', this.resizeHandler);
   }
@@ -67,7 +75,7 @@ export class Proceso implements AfterViewInit, OnDestroy {
             });
 
           // Path first (measures final layout), then entrance offsets
-          this.animarFlyer(cuerpoElement, pasos);
+          this.animarFlyer(cuerpoElement, pasos, false);
           this.animarPasos(pasos, { offset: 120, fromLeftOnMobile: false });
         },
 
@@ -91,8 +99,8 @@ export class Proceso implements AfterViewInit, OnDestroy {
               ease: 'power1.out',
             });
 
-          this.animarFlyer(cuerpoElement, pasos);
-          this.animarPasos(pasos, { offset: 80, fromLeftOnMobile: true });
+          this.animarFlyer(cuerpoElement, pasos, true);
+          this.animarPasos(pasos, { offset: 80, fromLeftOnMobile: false });
         },
       });
     }, cuerpoElement);
@@ -122,7 +130,11 @@ export class Proceso implements AfterViewInit, OnDestroy {
     });
   }
 
-  private animarFlyer(cuerpo: HTMLElement, pasos: NodeListOf<HTMLElement>) {
+  private animarFlyer(
+    cuerpo: HTMLElement,
+    pasos: NodeListOf<HTMLElement>,
+    isMobile = false,
+  ) {
     const flyer = this.flyer.nativeElement;
     const start = cuerpo.querySelector('.svg-slot') as HTMLElement | null;
     const end = cuerpo.querySelector('.proceso-end') as HTMLElement | null;
@@ -136,26 +148,24 @@ export class Proceso implements AfterViewInit, OnDestroy {
 
     const slotRect = start.getBoundingClientRect();
     const cuerpoRect = cuerpo.getBoundingClientRect();
-    const flyerH = flyer.offsetHeight || 100;
-    const flyerW = flyer.offsetWidth || flyerH * (167 / 215);
+    const flyerH = isMobile ? 52 : flyer.offsetHeight || 100;
+    const flyerW = flyerH * (167 / 215);
+    const slotCenterY = slotRect.top - cuerpoRect.top + slotRect.height / 2;
 
-    // Park flyer fully off the right edge so the tip isn't visible before scroll
+    // Desktop enters from the right; mobile from the left
     gsap.set(flyer, {
-      top: slotRect.top - cuerpoRect.top + slotRect.height / 2 - flyerH / 2,
-      left: cuerpo.offsetWidth + flyerW * 0.35,
+      top: slotCenterY - flyerH / 2,
+      left: isMobile
+        ? -flyerW * 1.35
+        : cuerpo.offsetWidth + flyerW * 0.35,
       width: flyerW,
       height: flyerH,
       x: 0,
       y: 0,
+      scale: 1,
+      rotation: 0,
       autoAlpha: 1,
       transformOrigin: '50% 50%',
-    });
-
-    const lastMarker = markers[markers.length - 1];
-    const lastRect = lastMarker.getBoundingClientRect();
-
-    gsap.set(exit, {
-      top: lastRect.top - cuerpoRect.top + lastRect.height / 2,
     });
 
     const boxStartRect = flyer.getBoundingClientRect();
@@ -167,8 +177,7 @@ export class Proceso implements AfterViewInit, OnDestroy {
       };
     };
 
-    const points = markers.map(toPoint);
-    points.push(toPoint(exit));
+    const points = [...markers.slice(0, -1).map(toPoint), toPoint(exit)];
 
     gsap
       .timeline({
@@ -177,8 +186,8 @@ export class Proceso implements AfterViewInit, OnDestroy {
           start: 'clamp(top center)',
           endTrigger: end,
           end: 'clamp(top center)',
-          scrub: 1,
-          invalidateOnRefresh: true,
+          scrub: isMobile ? 0.55 : 1,
+          invalidateOnRefresh: !isMobile,
         },
       })
       .to(flyer, {

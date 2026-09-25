@@ -176,7 +176,11 @@ app-proyecto {
   }
 
   .title {
+    display: flex;
+    align-items: center;
+    height: 96px;
     margin-bottom: 0.6em;
+    overflow: hidden;
   }
 
   .info {
@@ -193,6 +197,7 @@ app-proyecto {
   .credits,
   .director,
   .line {
+    overflow: hidden;
     clip-path: polygon(0 0, 100% 0, 100% 100%, 0% 100%);
   }
 
@@ -301,14 +306,13 @@ app-proyecto {
   }
 
   .project-img .project-photo {
-    transform: scale(1);
     transform-origin: center center;
-    transition: transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
     will-change: transform;
   }
 
-  .project-img:hover .project-photo {
+  .project-img.is-link:hover .project-photo {
     transform: scale(1.08);
+    transition: transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .gallery-wrapper {
@@ -391,14 +395,18 @@ app-proyecto {
   }
 
   @media (max-width: 900px) {
+    height: auto;
+
     .container {
       flex-direction: column;
+      padding-block: 0;
     }
 
     .site-info {
-      flex: 0.5;
+      flex: 0 0 auto;
       margin-block: 0;
       padding-block: 3.5em;
+      justify-content: center;
       border-left: none;
       border-right: none;
       border-bottom: 1px solid var(--hairline);
@@ -408,12 +416,22 @@ app-proyecto {
       display: none;
     }
 
+    .project-preview {
+      flex: none;
+    }
+
+    .col.project-preview {
+      height: 32rem;
+    }
+
     .project-details {
       width: calc(100% - 1em);
     }
 
     .project-img {
       width: 93%;
+      height: 240px;
+      max-height: 240px;
     }
 
     .gallery-wrapper {
@@ -434,6 +452,7 @@ app-proyecto {
   @media (max-width: 768px) {
     .col.project-preview {
       padding: 1.25em;
+      height: 28rem;
     }
 
     .site-info {
@@ -454,13 +473,17 @@ app-proyecto {
       max-width: 22em;
     }
 
+    .title {
+      height: 44px;
+    }
+
     .title h1 {
-      font-size: 40px;
+      font-size: 28px;
     }
 
     .title-logo {
-      height: 72px;
-      max-width: 300px;
+      height: 44px;
+      max-width: 200px;
     }
 
     .info {
@@ -488,8 +511,10 @@ app-proyecto {
 
     .project-img {
       left: 1.25em;
+      bottom: 1.25em;
       width: calc(100% - 2.5em);
-      height: 42%;
+      height: 200px;
+      max-height: 200px;
     }
   }
 }

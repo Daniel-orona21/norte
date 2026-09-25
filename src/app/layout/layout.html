@@ -1,6 +1,5 @@
 <div class="cursor-dot" aria-hidden="true"></div>
-<section class="hero" #hero>
-    <div class="header" #header>
+<div class="header" #header>
         <div class="headerSide">
             <div class="header__logo" #headerLogo aria-hidden="true">
               <span class="header__logo-mark" #headerLogoMark>N</span>
@@ -99,6 +98,7 @@
       </div>
     </div>
 
+<section class="hero" #hero>
   <div class="hero__stage" #stage>
     <div class="logo-slot">
       <div class="logo" #logo [class.logo--settled]="introDone">
@@ -167,8 +167,9 @@
           #tagline
           class="logo__tagline"
           width="745"
-          height="29"
-          viewBox="0 0 745 29"
+          height="33"
+          viewBox="0 -2 745 33"
+          overflow="visible"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
           aria-label="Tagline"

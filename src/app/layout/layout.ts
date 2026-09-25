@@ -109,6 +109,7 @@ export class Layout {
   private letterNDocked = false;
   private letterNSpacer?: HTMLElement;
   private letterNHome?: HTMLElement | null;
+  private letterNDockFrom?: { left: number; top: number; width: number; height: number };
   private headerNavRevealed = false;
   private headerNavTween?: gsap.core.Tween;
   private menuMorph?: Morph;
@@ -119,6 +120,7 @@ export class Layout {
   private scrollLocked = false;
   private scrollHintVisible = false;
   private logoResizeObserver?: ResizeObserver;
+  private heroMq?: MediaQueryList;
   private readonly host = inject(ElementRef<HTMLElement>);
   /** Once true, HMR/setup always snaps to the finished welcome logo. */
   introDone = !PLAY_WELCOME_INTRO;
@@ -151,6 +153,7 @@ export class Layout {
       this.initCursor();
       this.bindHotReload();
       this.bindLogoResize();
+      this.bindHeroBreakpoint();
       this.initMenuMorph();
       this.initMenuOverlay();
       this.bindSectionSpy();
@@ -187,6 +190,8 @@ export class Layout {
       document.body.style.overflow = '';
       this.logoResizeObserver?.disconnect();
       this.logoResizeObserver = undefined;
+      this.heroMq?.removeEventListener('change', this.onHeroMqChange);
+      this.heroMq = undefined;
       this.unlockScroll();
       this.teardown();
     });
@@ -725,6 +730,18 @@ export class Layout {
     gsap.set(orteEl, { clipPath: 'inset(0 0% 0 0)' });
   }
 
+  private readonly onHeroMqChange = () => this.queueSetup();
+
+  private isMobileHero(): boolean {
+    return window.matchMedia('(max-width: 768px)').matches;
+  }
+
+  private bindHeroBreakpoint(): void {
+    if (this.heroMq) return;
+    this.heroMq = window.matchMedia('(max-width: 768px)');
+    this.heroMq.addEventListener('change', this.onHeroMqChange);
+  }
+
   private bindLogoResize(): void {
     const logo = this.logo?.nativeElement;
     if (!logo || this.logoResizeObserver) return;
@@ -989,23 +1006,54 @@ export class Layout {
 
   /**
    * Logo is laid out at hero size. Start = scale 1 centered.
-   * End = scale down into the left column (scaling down stays sharp).
+   * Desktop end = scale down into the left column (scaling down stays sharp).
+   * Mobile end = scale down into the top row so copy can sit below.
    */
-  private measureLogoStart(stage: HTMLElement, logo: HTMLElement): { x: number; scale: number } {
+  private measureLogoStart(
+    stage: HTMLElement,
+    logo: HTMLElement,
+  ): { x: number; y: number; scale: number } {
     const slot = logo.parentElement!;
     const stageRect = stage.getBoundingClientRect();
     const slotRect = slot.getBoundingClientRect();
-    const stageCenter = stageRect.left + stageRect.width / 2;
-    const logoCenter = slotRect.left + slotRect.width / 2;
+    const stageCenterX = stageRect.left + stageRect.width / 2;
+    const logoCenterX = slotRect.left + slotRect.width / 2;
+
+    if (this.isMobileHero()) {
+      const stageCenterY = stageRect.top + stageRect.height / 2;
+      const logoCenterY = slotRect.top + slotRect.height / 2;
+      return {
+        x: stageCenterX - logoCenterX,
+        y: stageCenterY - logoCenterY,
+        scale: 1,
+      };
+    }
 
     return {
-      x: stageCenter - logoCenter,
+      x: stageCenterX - logoCenterX,
+      y: 0,
       scale: 1,
     };
   }
 
-  private measureLogoEnd(stage: HTMLElement, logo: HTMLElement): { x: number; scale: number } {
+  private measureLogoEnd(
+    stage: HTMLElement,
+    logo: HTMLElement,
+  ): { x: number; y: number; scale: number } {
     const stageRect = stage.getBoundingClientRect();
+
+    if (this.isMobileHero()) {
+      const rowHeight = stageRect.height / 2;
+      const logoWidth = logo.offsetWidth || 1;
+      const logoHeight = logo.offsetHeight || 1;
+      const scale = Math.min(
+        0.72,
+        (stageRect.width * 0.78) / logoWidth,
+        (rowHeight * 0.62) / logoHeight,
+      );
+      return { x: 0, y: 0, scale };
+    }
+
     const gap =
       parseFloat(getComputedStyle(stage).columnGap || getComputedStyle(stage).gap) || 0;
     const colWidth = (stageRect.width - gap) / 2;
@@ -1013,7 +1061,11 @@ export class Layout {
     // Fill the left column so logo + copy share the stage evenly
     const scale = Math.min(1, (colWidth * 0.98) / logoWidth);
 
-    return { x: 0, scale };
+    return { x: 0, y: 0, scale };
+  }
+
+  private logoTransformOrigin(): string {
+    return this.isMobileHero() ? 'center center' : 'right center';
   }
 
   /**
@@ -1092,6 +1144,7 @@ export class Layout {
     this.letterNSpacer = undefined;
     this.letterNHome = undefined;
     this.letterNDocked = false;
+    this.letterNDockFrom = undefined;
   }
 
   private revealHeaderNav(headerNav: HTMLElement | undefined, show: boolean): void {
@@ -1124,30 +1177,29 @@ export class Layout {
 
     this.armLetterDock(letterN);
 
-    // Live ghost rect — tracks ORTE as the section scrolls so the N never lags downward
     const ghost = this.letterNSpacer;
     if (!ghost) return;
-    const from = ghost.getBoundingClientRect();
+    if (!this.letterNDockFrom) {
+      const start = ghost.getBoundingClientRect();
+      this.letterNDockFrom = {
+        left: start.left,
+        top: start.top,
+        width: start.width,
+        height: start.height,
+      };
+    }
+    const from = this.letterNDockFrom;
     const to = headerLogo.getBoundingClientRect();
-    const t = gsap.parseEase('power2.inOut')(p);
-
-    // Quadratic bezier: up first (control keeps start X at header Y), then sideways
-    const cpX = from.left;
-    const cpY = to.top;
-    const inv = 1 - t;
-
-    const left = inv * inv * from.left + 2 * inv * t * cpX + t * t * to.left;
-    const top = inv * inv * from.top + 2 * inv * t * cpY + t * t * to.top;
+    const t = p;
 
     gsap.set(letterN, {
-      left,
-      top,
+      left: from.left + (to.left - from.left) * t,
+      top: from.top + (to.top - from.top) * t,
       width: from.width + (to.width - from.width) * t,
       height: from.height + (to.height - from.height) * t,
     });
 
-    // Timed reveal (0.3s), not scrubbed — fires once the N has arrived
-    this.revealHeaderNav(headerNav, p >= 0.98);
+    this.revealHeaderNav(headerNav, p >= 0.86);
   }
 
   private setup(): void {
@@ -1175,14 +1227,16 @@ export class Layout {
     this.ctx = gsap.context(() => {
       gsap.set(logo, {
         x: start.x,
+        y: start.y,
         scale: start.scale,
         force3D: false,
-        transformOrigin: 'right center',
+        transformOrigin: this.logoTransformOrigin(),
       });
 
       gsap.set(presentacion, {
         autoAlpha: 0,
         x: 0,
+        y: this.isMobileHero() ? 20 : 0,
       });
 
       if (headerNav) gsap.set(headerNav, { autoAlpha: 0 });
@@ -1206,37 +1260,46 @@ export class Layout {
         },
       });
 
+      const holdAfterPresentacion = 0.6;
+
       tl.fromTo(
         logo,
         {
           x: () => this.measureLogoStart(stage, logo).x,
+          y: () => this.measureLogoStart(stage, logo).y,
           scale: () => this.measureLogoStart(stage, logo).scale,
         },
         {
           x: () => this.measureLogoEnd(stage, logo).x,
+          y: () => this.measureLogoEnd(stage, logo).y,
           scale: () => this.measureLogoEnd(stage, logo).scale,
           ease: 'none',
           duration: 1,
           force3D: false,
-          transformOrigin: 'right center',
+          transformOrigin: this.logoTransformOrigin(),
           immediateRender: false,
         },
         0,
       );
 
-      // Presentación: timed 0.3s (not scrubbed), at the same scroll point as before (~0.95)
+      // Extra scroll after the logo settles so the presentación can be read centered.
+      tl.to(logo, { duration: holdAfterPresentacion });
+
+      // Presentación: timed 0.3s (not scrubbed), at the end of the logo move
       ScrollTrigger.create({
         id: 'presentacion-reveal',
         trigger: hero,
         start: () => {
           const dist = Math.max(0, hero.offsetHeight - window.innerHeight);
-          return `top+=${dist * 0.95} top`;
+          const motion = dist * (1 / (1 + holdAfterPresentacion));
+          return `top+=${motion * 0.95} top`;
         },
         invalidateOnRefresh: true,
         onEnter: () => {
           gsap.to(presentacion, {
             autoAlpha: 1,
             x: 0,
+            y: 0,
             duration: 0.3,
             ease: 'power2.out',
             overwrite: 'auto',
@@ -1246,6 +1309,7 @@ export class Layout {
           gsap.to(presentacion, {
             autoAlpha: 0,
             x: 0,
+            y: this.isMobileHero() ? 20 : 0,
             duration: 0.3,
             ease: 'power2.out',
             overwrite: 'auto',
@@ -1253,15 +1317,14 @@ export class Layout {
         },
       });
 
-      // Dock N → header: after presentación is fully shown, with hold,
-      // then a short scrub so it settles in the header without needing much scroll.
+      const dockMobile = this.isMobileHero();
       ScrollTrigger.create({
         id: 'logo-n-dock',
         trigger: hero,
-        start: 'bottom 80%',
-        end: '+=160',
-        scrub: 0.45,
-        invalidateOnRefresh: true,
+        start: dockMobile ? 'bottom 72%' : 'bottom 68%',
+        end: dockMobile ? '+=200' : '+=420',
+        scrub: dockMobile ? 0.55 : 0.9,
+        invalidateOnRefresh: !dockMobile,
         onUpdate: (self) => {
           this.applyLetterDock(letterN, headerLogo, self.progress, headerNav);
         },
@@ -1272,6 +1335,7 @@ export class Layout {
           this.applyLetterDock(letterN, headerLogo, 0, headerNav);
         },
         onRefresh: (self) => {
+          if (dockMobile) return;
           if (self.progress <= 0) {
             this.applyLetterDock(letterN, headerLogo, 0, headerNav);
             return;

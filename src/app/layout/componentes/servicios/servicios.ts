@@ -252,7 +252,8 @@ export class Servicios {
         gsap.set(el, { z: cfg.startZ, scale: VISUAL_SCALE });
       });
 
-      gsap.set('.heading', { z: -900, opacity: 0.45 });
+      const isMobile = window.matchMedia('(max-width: 768px)').matches;
+      gsap.set('.heading', { z: isMobile ? -260 : -900, opacity: isMobile ? 0.7 : 0.45 });
       applyOpacity();
 
       const pinSection = root.querySelector('.pin-section');
@@ -261,12 +262,16 @@ export class Servicios {
       const listItems = gsap.utils.toArray<HTMLElement>('li', list);
       const slides = gsap.utils.toArray<HTMLElement>('.slide', root);
 
-      const zoomScrollPct = 160;
-      const pinScrollPct = listItems.length * 50;
+      const zoomScrollPct = isMobile ? 80 : 160;
+      const itemScrollPct = 58;
+      const handoffDur = 24;
+      const pinScrollPct = handoffDur + listItems.length * itemScrollPct;
       const totalScrollPct = zoomScrollPct + pinScrollPct;
       const zoomDur = zoomScrollPct;
       const pinStart = zoomDur;
       const zoomFraction = zoomScrollPct / totalScrollPct;
+      const handoffFraction = handoffDur / pinScrollPct;
+      const itemCount = Math.max(1, listItems.length);
       let activeServiceIdx = 0;
       let visibleHeadlineIdx = 0;
 
@@ -396,19 +401,31 @@ export class Servicios {
             if (pinVisible && !this.tickerReady) {
               this.tickerReady = true;
               this.cdr.detectChanges();
+              playHeadline(activeServiceIdx);
             }
 
             let nextIdx = 0;
+            let itemP = 0;
             if (self.progress >= zoomFraction) {
               const pinP = gsap.utils.clamp(
                 0,
                 1,
                 (self.progress - zoomFraction) / (1 - zoomFraction),
               );
+              itemP =
+                pinP <= handoffFraction
+                  ? 0
+                  : (pinP - handoffFraction) / (1 - handoffFraction);
               nextIdx = Math.min(
-                Math.floor(pinP * serviceIcons.length),
-                serviceIcons.length - 1,
+                Math.floor(itemP * itemCount),
+                itemCount - 1,
               );
+            }
+
+            if (fill) {
+              gsap.set(fill, {
+                scaleY: 1 / itemCount + itemP * (1 - 1 / itemCount),
+              });
             }
 
             if (nextIdx === activeServiceIdx) return;
@@ -474,11 +491,13 @@ export class Servicios {
       );
 
       // Título sube arriba y el pin entra desde abajo, mismo ritmo
-      const handoffDur = Math.max(24, pinScrollPct * 0.18);
       master.to(
         '.heading',
         {
-          top: 'clamp(1rem, 5vh, 3rem)',
+          top: () =>
+            window.matchMedia('(max-width: 768px)').matches
+              ? '4.5rem'
+              : 'clamp(1rem, 5vh, 3rem)',
           yPercent: 0,
           ease: 'power2.inOut',
           duration: handoffDur,
@@ -520,18 +539,7 @@ export class Servicios {
         gsap.set(slide, { autoAlpha: 0 });
       });
 
-      master
-        .to(
-          fill,
-          {
-            scaleY: 1,
-            transformOrigin: 'top left',
-            ease: 'none',
-            duration: pinScrollPct,
-          },
-          pinStart,
-        )
-        .to({}, { duration: 0.01 }, pinStart + pinScrollPct);
+      master.to({}, { duration: pinScrollPct }, pinStart);
 
       const revealEl = root.querySelector('.opacity-reveal');
       if (!revealEl) return;

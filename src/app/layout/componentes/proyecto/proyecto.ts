@@ -36,6 +36,14 @@ function createEl(tag: string, className: string): HTMLElement {
 const TEXT_SELECTOR =
   '.title h1, .title .title-logo, .info p .line span, .credits p, .director p';
 
+const TEXT_MASK = '.title, .credits, .director, .line';
+
+function maskOffset(el: Element): number {
+  const node = el as HTMLElement;
+  const mask = node.closest(TEXT_MASK);
+  return mask instanceof HTMLElement ? mask.offsetHeight : node.offsetHeight;
+}
+
 @Component({
   selector: 'app-proyecto',
   imports: [],
@@ -207,17 +215,33 @@ export class Proyecto implements AfterViewInit, OnDestroy {
         });
 
         gsap.to(elementsToAnimate, {
-          y: -60,
+          y: (_, el) => -maskOffset(el),
+          yPercent: 0,
           duration: 1,
           ease: 'power4.in',
           stagger: 0.05,
         });
+
+        const currentPhoto = projectImg.querySelector<HTMLElement>('.project-photo');
+        const restBottom = window.matchMedia('(max-width: 768px)').matches
+          ? '1.25em'
+          : '3.5em';
 
         gsap.to(projectImg, {
           scale: 0,
           bottom: '10em',
           duration: 1,
           ease: 'power4.in',
+          onStart: () => {
+            self.add(() => {
+              if (!currentPhoto) return;
+              gsap.to(currentPhoto, {
+                scale: 2,
+                duration: 1,
+                ease: 'power4.in',
+              });
+            });
+          },
           onComplete: () => {
             self.add(() => {
               root.querySelector('.project-details')?.remove();
@@ -232,11 +256,12 @@ export class Proyecto implements AfterViewInit, OnDestroy {
               if (newInfoP) createSplitText(newInfoP);
 
               const newTextEls = newProjectDetails.querySelectorAll(TEXT_SELECTOR);
+              const newPhoto = newProjectImg.querySelector<HTMLElement>('.project-photo');
 
               gsap.fromTo(
                 newTextEls,
-                { y: 40 },
-                { y: 0, duration: 1, ease: 'power4.out', stagger: 0.05 },
+                { y: (_, el) => maskOffset(el), yPercent: 0 },
+                { y: 0, yPercent: 0, duration: 1, ease: 'power4.out', stagger: 0.05 },
               );
 
               gsap.fromTo(
@@ -244,10 +269,27 @@ export class Proyecto implements AfterViewInit, OnDestroy {
                 { scale: 0, bottom: '-10em' },
                 {
                   scale: 1,
-                  bottom: '3.5em',
+                  bottom: restBottom,
+                  duration: 1,
+                  ease: 'power4.out',
+                },
+              );
+
+              if (!newPhoto) {
+                isAnimating = false;
+                return;
+              }
+
+              gsap.fromTo(
+                newPhoto,
+                { scale: 2 },
+                {
+                  scale: 1,
                   duration: 1,
                   ease: 'power4.out',
                   onComplete: () => {
+                    gsap.set(newProjectImg, { clearProps: 'transform' });
+                    gsap.set(newPhoto, { clearProps: 'transform' });
                     isAnimating = false;
                   },
                 },
@@ -280,7 +322,7 @@ export class Proyecto implements AfterViewInit, OnDestroy {
         const p = root.querySelector<HTMLElement>('.info p');
         if (!p) return;
         createSplitText(p);
-        gsap.set(root.querySelectorAll(TEXT_SELECTOR), { y: 0 });
+        gsap.set(root.querySelectorAll(TEXT_SELECTOR), { y: 0, yPercent: 0 });
       });
     });
   }
