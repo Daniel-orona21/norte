@@ -341,7 +341,7 @@ section {
 
 .proyectos {
   position: relative;
-  z-index: 1;
+  z-index: 0;
   background: #ffffff;
   min-height: 0;
   border-top: 1px solid rgba(0, 0, 0, 0.12);
@@ -528,7 +528,7 @@ section {
 
 .proceso {
   position: relative;
-  z-index: 2;
+  z-index: 6;
   overflow: visible;
   background-color: #ffffff;
 }

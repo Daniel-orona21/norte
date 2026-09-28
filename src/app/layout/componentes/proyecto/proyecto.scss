@@ -308,11 +308,11 @@ app-proyecto {
   .project-img .project-photo {
     transform-origin: center center;
     will-change: transform;
+    transition: transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .project-img.is-link:hover .project-photo {
     transform: scale(1.08);
-    transition: transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .gallery-wrapper {

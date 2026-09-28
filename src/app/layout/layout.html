@@ -101,7 +101,12 @@
 <section class="hero" #hero>
   <div class="hero__stage" #stage>
     <div class="logo-slot">
-      <div class="logo" #logo [class.logo--settled]="introDone">
+      <div
+        class="logo"
+        #logo
+        [class.logo--settled]="introDone"
+        [class.logo--intro-armed]="introArmed"
+      >
         <div class="logo__wordmark" #wordmark aria-label="Norte">
           <div class="logo__n" #letterN>
             <svg

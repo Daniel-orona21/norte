@@ -9,6 +9,16 @@ app-layout .logo--settled .logo__orte {
   clip-path: inset(0 0 0 0);
 }
 
+/* First paint: keep the A centered while ORTE still occupies width */
+app-layout .logo:not(.logo--settled):not(.logo--intro-armed) .logo__wordmark {
+  transform: translateX(calc((100% - (167 / 215 * 1.08em)) / 2));
+}
+
+app-layout .logo:not(.logo--settled) .logo__tagline {
+  opacity: 0;
+  visibility: hidden;
+}
+
 @font-face {
   font-family: 'Joyride alt italic';
   src: url('/fuentes/Joyride-Font/JoyrideALTItalic.otf') format('opentype');

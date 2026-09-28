@@ -19,6 +19,7 @@ import { Proceso } from './componentes/proceso/proceso';
 import { Proyecto } from './componentes/proyecto/proyecto';
 import { Cta } from './componentes/cta/cta';
 import { Footer } from './componentes/footer/footer';
+import { galleryItems } from './componentes/proyecto/data';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -39,8 +40,19 @@ const VIEW_H = 215;
  * Dev toggle for the welcome intro (A fill → N morph → ORTE → tagline).
  * `true`  → play animation and lock scroll until it finishes.
  * `false` → skip animation, show final logo, keep scroll free.
+ * The A fill is driven by real site load (fonts, images, remaining assets).
  */
-const PLAY_WELCOME_INTRO = false;
+const PLAY_WELCOME_INTRO = true;
+
+const SITE_IMAGE_URLS: string[] = [
+  '/assets/img/cta.png',
+  ...galleryItems.flatMap((item) =>
+    [item.image, item.logo, item.markLogo].filter((url): url is string => !!url),
+  ),
+];
+
+const SITE_CUSTOM_ELEMENTS = ['motion-headline', 'motion-ticker'] as const;
+const SITE_LOAD_TIMEOUT_MS = 12_000;
 
 type ViteHot = {
   on: (event: string, cb: (...args: unknown[]) => void) => void;
@@ -101,6 +113,11 @@ export class Layout {
   private readonly cdr = inject(ChangeDetectorRef);
   private ctx?: gsap.Context;
   private morphTween?: gsap.core.Tween | gsap.core.Timeline;
+  private fillFollow?: gsap.core.Tween;
+  private readonly fillState = { p: PLAY_WELCOME_INTRO ? 0 : 1 };
+  private fillVisualReady = !PLAY_WELCOME_INTRO;
+  private pendingFillProgress = 0;
+  private fillComplete?: () => void;
   private scrollHintTween?: gsap.core.Tween | gsap.core.Timeline;
   private setupQueued = false;
   private boundHero: HTMLElement | null = null;
@@ -125,6 +142,8 @@ export class Layout {
   private readonly host = inject(ElementRef<HTMLElement>);
   /** Once true, HMR/setup always snaps to the finished welcome logo. */
   introDone = !PLAY_WELCOME_INTRO;
+  /** JS has placed the A on center — drop the CSS pre-center. */
+  introArmed = !PLAY_WELCOME_INTRO;
 
   private readonly preventScroll = (event: Event) => {
     event.preventDefault();
@@ -178,6 +197,7 @@ export class Layout {
 
     this.destroyRef.onDestroy(() => {
       this.morphTween?.kill();
+      this.fillFollow?.kill();
       this.scrollHintTween?.kill();
       this.menuMorph?.destroy();
       this.menuMorph = undefined;
@@ -633,18 +653,20 @@ export class Layout {
   }
 
   private async boot(): Promise<void> {
+    const filled =
+      PLAY_WELCOME_INTRO && !this.introDone
+        ? this.startSiteLoadAndFill()
+        : Promise.resolve();
+
+    this.prepareWelcomeIntro();
     await this.whenLogoFontsReady();
-    // Hide ORTE before any layout/setup so it never flashes open
-    const orteEl = this.orteRest?.nativeElement;
-    if (PLAY_WELCOME_INTRO && orteEl && !this.introDone) {
-      gsap.set(orteEl, { clipPath: 'inset(0 100% 0 0)' });
-    }
+    this.prepareWelcomeIntro();
     this.setup();
-    await this.runIntro();
+    await this.runIntro(filled);
     ScrollTrigger.refresh();
   }
 
-  private async runIntro(): Promise<void> {
+  private async runIntro(filled: Promise<void>): Promise<void> {
     if (this.morphing) return;
 
     if (!PLAY_WELCOME_INTRO || this.introDone) {
@@ -653,7 +675,7 @@ export class Layout {
       return;
     }
 
-    this.runFillThenMorph();
+    await this.runFillThenMorph(filled);
   }
 
   /** Kodchasan must be loaded before measuring ORTE width (GSAP freezes px otherwise). */
@@ -669,6 +691,222 @@ export class Layout {
     } catch {
       // Proceed with fallback metrics if the network font fails.
     }
+  }
+
+  /** Center the A and keep fill at 0 before any load progress is shown. */
+  private prepareWelcomeIntro(): void {
+    if (!PLAY_WELCOME_INTRO || this.introDone) return;
+
+    this.lockScroll();
+
+    const orteEl = this.orteRest?.nativeElement;
+    const taglineEl = this.tagline?.nativeElement;
+    const wordmarkEl = this.wordmark?.nativeElement;
+    if (orteEl) gsap.set(orteEl, { clipPath: 'inset(0 100% 0 0)' });
+    if (taglineEl) gsap.set(taglineEl, { autoAlpha: 0, force3D: false });
+    if (wordmarkEl) {
+      gsap.set(wordmarkEl, {
+        x: this.measureLetterCenterOffset(),
+        force3D: false,
+      });
+    }
+
+    this.ngZone.run(() => {
+      this.introArmed = true;
+    });
+
+    if (this.fillVisualReady) return;
+
+    this.fillState.p = 0;
+    this.ngZone.run(() => {
+      this.fillProgress = 0;
+      this.grayOpacity = 1;
+    });
+    this.fillVisualReady = true;
+    this.setFillTarget(
+      this.pendingFillProgress,
+      this.pendingFillProgress >= 1 ? this.fillComplete : undefined,
+    );
+  }
+
+  /**
+   * Track real site resources and ease the A fill toward that progress.
+   * Resolves only when the fill has visually reached 1.
+   */
+  private startSiteLoadAndFill(): Promise<void> {
+    this.lockScroll();
+    return new Promise((resolve) => {
+      let settled = false;
+      this.fillComplete = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+
+      const finish = () => {
+        this.pendingFillProgress = 1;
+        if (!this.fillVisualReady) return;
+        this.setFillTarget(1, this.fillComplete);
+      };
+
+      const timer = window.setTimeout(finish, SITE_LOAD_TIMEOUT_MS);
+      this.destroyRef.onDestroy(() => {
+        window.clearTimeout(timer);
+        finish();
+      });
+
+      this.watchSiteResources((progress) => {
+        this.pendingFillProgress = Math.max(this.pendingFillProgress, progress);
+        if (!this.fillVisualReady) return;
+
+        if (this.pendingFillProgress >= 1) {
+          window.clearTimeout(timer);
+          finish();
+          return;
+        }
+        this.setFillTarget(this.pendingFillProgress);
+      });
+    });
+  }
+
+  private setFillTarget(target: number, onArrive?: () => void): void {
+    const to = Math.min(1, Math.max(this.fillState.p, target));
+    const delta = to - this.fillState.p;
+    this.fillFollow?.kill();
+
+    if (delta < 0.001) {
+      this.fillState.p = to;
+      this.ngZone.run(() => {
+        this.fillProgress = to;
+        if (to >= 1) this.grayOpacity = 0;
+      });
+      onArrive?.();
+      return;
+    }
+
+    this.fillFollow = gsap.to(this.fillState, {
+      p: to,
+      duration: Math.max(0.2, delta * 0.65),
+      ease: 'power2.out',
+      overwrite: true,
+      onUpdate: () => {
+        this.ngZone.run(() => {
+          this.fillProgress = this.fillState.p;
+        });
+      },
+      onComplete: () => {
+        this.ngZone.run(() => {
+          this.fillProgress = this.fillState.p;
+          if (to >= 1) this.grayOpacity = 0;
+        });
+        onArrive?.();
+      },
+    });
+  }
+
+  private watchSiteResources(onProgress: (progress: number) => void): void {
+    const tasks: Array<() => Promise<void>> = [
+      ...this.collectImageUrls().map((url) => () => this.whenImageReady(url)),
+      () => this.whenDocumentFontsReady(),
+      () => this.whenDocumentLoaded(),
+      () => this.whenCustomElementsReady(),
+    ];
+
+    const total = Math.max(1, tasks.length);
+    let done = 0;
+
+    for (const task of tasks) {
+      void task()
+        .catch(() => undefined)
+        .finally(() => {
+          done += 1;
+          onProgress(done / total);
+        });
+    }
+  }
+
+  private collectImageUrls(): string[] {
+    const urls = new Set<string>(SITE_IMAGE_URLS);
+    for (const img of Array.from(document.images)) {
+      const src = img.currentSrc || img.src;
+      if (src) urls.add(src);
+    }
+    return [...urls];
+  }
+
+  private whenImageReady(src: string): Promise<void> {
+    return this.withTimeout(
+      new Promise((resolve) => {
+        const img = new Image();
+        let settled = false;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          resolve();
+        };
+
+        img.onload = () => {
+          if (typeof img.decode === 'function') {
+            void img.decode().then(finish, finish);
+          } else {
+            finish();
+          }
+        };
+        img.onerror = finish;
+        img.src = src;
+
+        if (img.complete) {
+          if (img.naturalWidth > 0 && typeof img.decode === 'function') {
+            void img.decode().then(finish, finish);
+          } else {
+            finish();
+          }
+        }
+      }),
+      4000,
+    );
+  }
+
+  private whenDocumentFontsReady(): Promise<void> {
+    return this.withTimeout(
+      document.fonts?.ready?.then(() => undefined) ?? Promise.resolve(),
+      3000,
+    );
+  }
+
+  private withTimeout(promise: Promise<void>, ms: number): Promise<void> {
+    return new Promise((resolve) => {
+      const timer = window.setTimeout(resolve, ms);
+      void promise.then(
+        () => {
+          window.clearTimeout(timer);
+          resolve();
+        },
+        () => {
+          window.clearTimeout(timer);
+          resolve();
+        },
+      );
+    });
+  }
+
+  private whenDocumentLoaded(): Promise<void> {
+    if (document.readyState === 'complete') return Promise.resolve();
+    return new Promise((resolve) => {
+      window.addEventListener('load', () => resolve(), { once: true });
+    });
+  }
+
+  private whenCustomElementsReady(): Promise<void> {
+    return Promise.all(
+      SITE_CUSTOM_ELEMENTS.map((name) => {
+        if (customElements.get(name)) return Promise.resolve();
+        return Promise.race([
+          customElements.whenDefined(name),
+          new Promise<void>((resolve) => window.setTimeout(resolve, 3000)),
+        ]);
+      }),
+    ).then(() => undefined);
   }
 
   /** Lock page scroll without overflow:hidden — that unsticks .cta and jumps the photo. */
@@ -743,6 +981,7 @@ export class Layout {
     this.grayOpacity = 0;
     this.fillProgress = 1;
     this.introDone = true;
+    this.introArmed = true;
 
     gsap.set(wordmarkEl, { x: 0, force3D: false });
     gsap.set(taglineEl, { autoAlpha: 1, force3D: false });
@@ -793,7 +1032,7 @@ export class Layout {
     return logoCenter - letterCenter;
   }
 
-  private runFillThenMorph(): void {
+  private async runFillThenMorph(filled: Promise<void>): Promise<void> {
     const stemEl = this.morphStem?.nativeElement;
     const bodyEl = this.morphBody?.nativeElement;
     const orteEl = this.orteRest?.nativeElement;
@@ -813,15 +1052,23 @@ export class Layout {
     this.morphStemOpacity = 0;
     this.grayPathD = PATH_A;
     this.grayOpacity = 1;
-    this.fillProgress = 0;
 
-    const centerOffset = this.measureLetterCenterOffset();
     gsap.killTweensOf(orteEl);
     gsap.set(orteEl, { clipPath: 'inset(0 100% 0 0)' });
-    gsap.set(wordmarkEl, { x: centerOffset, force3D: false });
+    gsap.set(wordmarkEl, {
+      x: this.measureLetterCenterOffset(),
+      force3D: false,
+    });
     gsap.set(taglineEl, { autoAlpha: 0, force3D: false });
 
-    const fillState = { p: 0 };
+    await filled;
+    this.fillFollow?.kill();
+    this.fillState.p = 1;
+    this.ngZone.run(() => {
+      this.fillProgress = 1;
+      this.grayOpacity = 0;
+    });
+
     const morphState = { t: 0 };
     const bodyInterp = interpolate(PATH_A, PATH_N_BODY, { maxSegmentLength: 4 });
     const stemInterp = interpolate(PATH_STEM_HIDDEN, PATH_N_STEM, { maxSegmentLength: 4 });
@@ -852,23 +1099,6 @@ export class Layout {
       },
     });
 
-    tl.to(fillState, {
-      p: 1,
-      duration: .6,
-      ease: 'power2.inOut',
-      onUpdate: () => {
-        this.ngZone.run(() => {
-          this.fillProgress = fillState.p;
-        });
-      },
-      onComplete: () => {
-        this.ngZone.run(() => {
-          this.fillProgress = 1;
-          this.grayOpacity = 0;
-        });
-      },
-    });
-
     tl.to(
       morphState,
       {
@@ -890,7 +1120,7 @@ export class Layout {
           this.grayPathD = bodyD;
         },
       },
-      '+=0',
+      0,
     );
 
     // ORTE wipe (clip-path) — no width reflow, letters stay put
